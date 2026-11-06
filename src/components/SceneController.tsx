@@ -5,7 +5,6 @@ import {
   GENRE_SHELVES,
   REPRESENTATIVE_BOOKS,
   SEAT_OBJECTS,
-  SPACE_STORIES,
   TABLE_OBJECTS,
 } from '../data/bookstoreData';
 import {
@@ -35,12 +34,12 @@ function lerpAngleShortest(current: number, target: number, t: number): number {
 function stepAngleSmoothCapped(
   current: number,
   target: number,
-  Responsiveness: number,
+  responsiveness: number,
   maxSpeedRadPerSec: number,
   dt: number
 ): number {
   const diff = normalizeAngle(target - current);
-  const desiredDelta = diff * Math.min(1, dt * Responsiveness);
+  const desiredDelta = diff * Math.min(1, dt * responsiveness);
   const maxStep = maxSpeedRadPerSec * dt;
   const clampedDelta = Math.max(-maxStep, Math.min(maxStep, desiredDelta));
   return normalizeAngle(current + clampedDelta);
@@ -93,25 +92,27 @@ export const SceneController: React.FC<SceneControllerProps> = ({
   onUpdateNearbyBookId,
   onUpdateActivePrompt,
 }) => {
-  const { camera, gl } = useThree();
+  const { camera, gl, size } = useThree();
 
   const keysPressedRef = useRef<Set<string>>(new Set());
   const lastKeyComboRef = useRef<string>('');
   const movementBaseYawRef = useRef<number>(0);
 
-  // Pointer drag state with 6px deadzone so normal clicks never jerk the camera
+  // Pointer drag state with deadzone + two-finger pinch-to-zoom support
   const isPointerDownRef = useRef(false);
   const isDraggingRef = useRef(false);
+  const isPinchingRef = useRef(false);
+  const pinchLastDistRef = useRef<number>(0);
   const pointerDownStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const lastPointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const manualLookHoldTimerRef = useRef<number>(0);
 
-  // Damped yaw/pitch targets for gentle mouse look
+  // Damped yaw/pitch targets for gentle mouse/touch look
   const targetCameraYawRef = useRef<number>(cameraYawRef.current);
   const targetCameraPitchRef = useRef<number>(cameraPitchRef.current);
 
-  const smoothLookAtRef = useRef(new THREE.Vector3(0.15, 1.15, 7.8));
-  const smoothCamPosRef = useRef(new THREE.Vector3(0.15, 2.35, 11.6));
+  const smoothLookAtRef = useRef(new THREE.Vector3(0.15, 1.32, 7.8));
+  const smoothCamPosRef = useRef(new THREE.Vector3(0.15, 2.55, 11.8));
   const proximityTimerRef = useRef(0);
   const posSyncTimerRef = useRef(0);
   const wasOutsideRef = useRef<boolean>(true);
@@ -151,6 +152,7 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       lastKeyComboRef.current = '';
       isPointerDownRef.current = false;
       isDraggingRef.current = false;
+      isPinchingRef.current = false;
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -163,12 +165,13 @@ export const SceneController: React.FC<SceneControllerProps> = ({
     };
   }, []);
 
-  // Mouse drag & wheel with reduced, gentle sensitivity and deadzone
+  // Mouse drag, wheel zoom, and mobile 2-finger pinch-to-zoom
   useEffect(() => {
     const dom = gl.domElement;
 
     const onPointerDown = (e: PointerEvent) => {
-      if (e.button !== 0) return;
+      if (isPinchingRef.current) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
       isPointerDownRef.current = true;
       isDraggingRef.current = false;
       pointerDownStartRef.current = { x: e.clientX, y: e.clientY };
@@ -178,14 +181,14 @@ export const SceneController: React.FC<SceneControllerProps> = ({
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      if (!isPointerDownRef.current) return;
+      if (!isPointerDownRef.current || isPinchingRef.current) return;
 
       const totalDx = e.clientX - pointerDownStartRef.current.x;
       const totalDy = e.clientY - pointerDownStartRef.current.y;
 
-      // Require at least 6px movement before treating as a camera drag
+      // Require at least 7px movement before treating as a camera drag
       if (!isDraggingRef.current) {
-        if (Math.hypot(totalDx, totalDy) < 6) return;
+        if (Math.hypot(totalDx, totalDy) < 7) return;
         isDraggingRef.current = true;
         lastPointerRef.current = { x: e.clientX, y: e.clientY };
         return;
@@ -195,7 +198,6 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       const dy = e.clientY - lastPointerRef.current.y;
       lastPointerRef.current = { x: e.clientX, y: e.clientY };
 
-      // Reduced mouse sensitivity (~3.2x gentler than before) so the user can calmly inspect the room
       const MOUSE_YAW_SENSITIVITY = 0.002;
       const MOUSE_PITCH_SENSITIVITY = 0.0016;
 
@@ -203,11 +205,10 @@ export const SceneController: React.FC<SceneControllerProps> = ({
         targetCameraYawRef.current - dx * MOUSE_YAW_SENSITIVITY
       );
       targetCameraPitchRef.current = Math.max(
-        0.1,
+        0.12,
         Math.min(1.05, targetCameraPitchRef.current + dy * MOUSE_PITCH_SENSITIVITY)
       );
 
-      // Pause automatic camera-behind-character snap for a moment after manual look
       manualLookHoldTimerRef.current = 1.6;
     };
 
@@ -216,9 +217,53 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       isDraggingRef.current = false;
     };
 
+    // Two-finger pinch-to-zoom for mobile / touch screens
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        isPinchingRef.current = true;
+        isPointerDownRef.current = false;
+        isDraggingRef.current = false;
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        pinchLastDistRef.current = Math.hypot(
+          t0.clientX - t1.clientX,
+          t0.clientY - t1.clientY
+        );
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && isPinchingRef.current) {
+        e.preventDefault();
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        const dist = Math.hypot(
+          t0.clientX - t1.clientX,
+          t0.clientY - t1.clientY
+        );
+        const deltaDist = dist - pinchLastDistRef.current;
+        pinchLastDistRef.current = dist;
+
+        // Spreading fingers apart (deltaDist > 0) zooms in (smaller distance);
+        // pinching fingers together (deltaDist < 0) zooms out (up to 4.2m indoor overview)
+        const nextDist = Math.max(
+          0.9,
+          Math.min(4.2, cameraDistanceRef.current - deltaDist * 0.011)
+        );
+        cameraDistanceRef.current = nextDist;
+        onSyncCameraDistance(nextDist);
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        isPinchingRef.current = false;
+      }
+    };
+
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      // Gentler wheel zoom speed, strictly capped at 4.2m so zoom-out stays inside the bookstore
       const nextDist = Math.max(
         0.9,
         Math.min(4.2, cameraDistanceRef.current + e.deltaY * 0.0014)
@@ -230,12 +275,18 @@ export const SceneController: React.FC<SceneControllerProps> = ({
     dom.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    dom.addEventListener('touchstart', onTouchStart, { passive: false });
+    dom.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd);
     dom.addEventListener('wheel', onWheel, { passive: false });
 
     return () => {
       dom.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      dom.removeEventListener('touchstart', onTouchStart);
+      dom.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
       dom.removeEventListener('wheel', onWheel);
     };
   }, [gl, cameraYawRef, cameraPitchRef, cameraDistanceRef, onSyncCameraDistance]);
@@ -291,7 +342,6 @@ export const SceneController: React.FC<SceneControllerProps> = ({
           onStandUp();
         }
 
-        // Latch base camera yaw whenever the directional key combination changes
         const comboKey = `${Math.sign(inputForward)},${Math.sign(inputRight)}`;
         if (comboKey !== lastKeyComboRef.current) {
           lastKeyComboRef.current = comboKey;
@@ -312,7 +362,6 @@ export const SceneController: React.FC<SceneControllerProps> = ({
           moveZ /= len;
         }
 
-        // Comfortable browsing walk speed (2.2m/s)
         const speed = 2.2;
         const [curX, , curZ] = positionRef.current;
         const desiredX = curX + moveX * speed * dt;
@@ -330,7 +379,6 @@ export const SceneController: React.FC<SceneControllerProps> = ({
 
         positionRef.current = [resolvedX, stepElevation, resolvedZ];
         const targetRot = Math.atan2(moveX, moveZ);
-        // Smooth, unhurried character body rotation (max 3.2 rad/s)
         rotationYRef.current = stepAngleSmoothCapped(
           rotationYRef.current,
           targetRot,
@@ -376,7 +424,6 @@ export const SceneController: React.FC<SceneControllerProps> = ({
               }
             }
           } else {
-            // Relaxed click-navigation walking speed (2.4m/s)
             const speed = 2.4;
             const step = Math.min(dist, speed * dt);
             const dirX = dx / dist;
@@ -393,7 +440,6 @@ export const SceneController: React.FC<SceneControllerProps> = ({
               resolvedZ > 7.45 ? -0.18 : resolvedZ > 7.05 ? -0.09 : 0;
             positionRef.current = [resolvedX, stepElevation, resolvedZ];
             const targetRot = Math.atan2(dirX, dirZ);
-            // Smooth character rotation along path (max 2.8 rad/s)
             rotationYRef.current = stepAngleSmoothCapped(
               rotationYRef.current,
               targetRot,
@@ -442,7 +488,6 @@ export const SceneController: React.FC<SceneControllerProps> = ({
 
     // 4. Gentle, Velocity-Capped Camera Gaze Alignment
     if (isDraggingRef.current) {
-      // Smoothly interpolate toward the user's mouse drag target
       cameraYawRef.current = lerpAngleShortest(
         cameraYawRef.current,
         targetCameraYawRef.current,
@@ -462,8 +507,6 @@ export const SceneController: React.FC<SceneControllerProps> = ({
         );
       }
     } else if (manualLookHoldTimerRef.current <= 0) {
-      // Gently align camera behind character with a strict speed cap (~55 deg/s max)
-      // so changing direction never whips the room across the screen
       const desiredCameraYaw = normalizeAngle(rotationYRef.current - Math.PI);
       const responsiveness = actionState === 'WALKING' ? 2.1 : 1.6;
       const maxYawSpeed = actionState === 'WALKING' ? 1.05 : 0.85;
@@ -478,7 +521,9 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       targetCameraYawRef.current = cameraYawRef.current;
     }
 
-    const lookTargetY = charY + (isSeated ? 0.96 : 1.24);
+    // Aim lookTarget slightly above the scaled-down character (charY + 1.32)
+    // so the character stays compact in the lower third and the bookstore interior fills the screen!
+    const lookTargetY = charY + (isSeated ? 0.92 : 1.32);
     const camDist = Math.max(0.9, Math.min(4.2, cameraDistanceRef.current));
     const pitch = cameraPitchRef.current;
     const yaw = cameraYawRef.current;
@@ -500,11 +545,14 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       camDist
     );
 
-    // Smoothly widen indoor FOV (50 deg -> 72 deg) as user zooms out up to 4.2m inside the store
-    // so zooming out shows the entire interior without the camera ever leaving the room walls
+    // Aspect-ratio adaptive FOV: on portrait mobile screens (aspect < 1.0), automatically widen
+    // vertical FOV so the horizontal view stays wide and the character looks smaller inside the room
     if (camera instanceof THREE.PerspectiveCamera) {
+      const aspect = size.width / Math.max(1, size.height);
+      const portraitBoost = aspect < 1.0 ? (1.0 - aspect) * 28 : 0;
       const zoomRatio = (camDist - 0.9) / (4.2 - 0.9);
-      const targetFov = charZ <= 6.35 ? 50 + zoomRatio * 22 : 56;
+      const baseFov = charZ <= 6.35 ? 54 + zoomRatio * 20 : 58;
+      const targetFov = Math.min(88, baseFov + portraitBoost);
       if (Math.abs(camera.fov - targetFov) > 0.05) {
         camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6.0);
         camera.updateProjectionMatrix();
@@ -518,11 +566,10 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       camLerp
     );
 
-    // Use the camera's own smooth viewing direction for a subtle forward look-ahead
     const viewFwdX = -Math.sin(yaw);
     const viewFwdZ = -Math.cos(yaw);
     const lookAheadDist =
-      charZ > 3.2 && charZ <= 6.35 && Math.abs(yaw) < 0.7 ? 0.95 : 0.45;
+      charZ > 3.2 && charZ <= 6.35 && Math.abs(yaw) < 0.7 ? 1.1 : 0.65;
 
     const lookTargetX = charX + viewFwdX * lookAheadDist;
     const lookTargetZ = charZ + viewFwdZ * lookAheadDist;
@@ -572,7 +619,7 @@ export const SceneController: React.FC<SceneControllerProps> = ({
           charX - book.interactionPoint[0],
           charZ - book.interactionPoint[2]
         );
-        if (d < 1.55 && d < closestBookDist) {
+        if (d < 1.35 && d < closestBookDist) {
           closestBookDist = d;
           closestBook = book;
         }
@@ -605,65 +652,35 @@ export const SceneController: React.FC<SceneControllerProps> = ({
         }
       }
 
-      let closestStory = null;
-      let closestStoryDist = Infinity;
-      for (const story of SPACE_STORIES) {
-        const d = Math.hypot(
-          charX - story.approachPoint[0],
-          charZ - story.approachPoint[2]
-        );
-        if (d < story.triggerRadius && d < closestStoryDist) {
-          closestStoryDist = d;
-          closestStory = story;
-        }
-      }
-
-      if (closestSeat && closestSeatDist < 1.25 && !isSeated) {
+      // Only show a compact prompt when right next to a seat, book, or table (no passive story/shelf banners cluttering the screen)
+      if (closestSeat && closestSeatDist < 1.1 && !isSeated) {
         onUpdateActivePrompt({
           kind: 'seat',
           id: closestSeat.id,
-          label: `[E] ${closestSeat.name}에 앉기`,
+          label: `${closestSeat.name}에 앉기`,
           sublabel: closestSeat.description,
           keyHint: 'E',
           seat: closestSeat,
         });
-      } else if (closestBook && closestBookDist < 1.45) {
+      } else if (closestBook && closestBookDist < 1.2) {
         onUpdateActivePrompt({
           kind: 'book',
           id: closestBook.id,
-          label: `[E] 책 꺼내기 — 『${closestBook.title}』`,
+          label: `책 꺼내기: 『${closestBook.title}』`,
           sublabel: `${closestBook.genreName} · ${closestBook.author}`,
           keyHint: 'E',
           book: closestBook,
         });
-      } else if (closestTable && closestTableDist < 1.45) {
+      } else if (closestTable && closestTableDist < 1.15) {
         onUpdateActivePrompt({
           kind: 'table',
           id: closestTable.id,
           label: heldBook
-            ? `[E] ${closestTable.name}에 책 내려놓기 / 살펴보기`
-            : `[E] ${closestTable.name} 이용하기`,
+            ? `${closestTable.name}에 책 내려놓기`
+            : `${closestTable.name} 살펴보기`,
           sublabel: closestTable.description,
           keyHint: 'E',
           table: closestTable,
-        });
-      } else if (closestShelf) {
-        onUpdateActivePrompt({
-          kind: 'shelf',
-          id: closestShelf.id,
-          label: `[E] ${closestShelf.name} 서가 도서 목록 보기`,
-          sublabel: closestShelf.subtitle,
-          keyHint: 'E',
-          shelf: closestShelf,
-        });
-      } else if (closestStory) {
-        onUpdateActivePrompt({
-          kind: 'story',
-          id: closestStory.id,
-          label: `[E] ${closestStory.title} 살펴보기`,
-          sublabel: closestStory.subtitle,
-          keyHint: 'E',
-          story: closestStory,
         });
       } else {
         onUpdateActivePrompt(null);

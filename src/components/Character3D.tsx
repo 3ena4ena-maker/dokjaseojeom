@@ -302,7 +302,12 @@ export const Character3D: React.FC<Character3DProps> = ({
     heldBook !== null && actionState !== 'READING';
 
   return (
-    <group ref={rootRef} position={[0.1, 0, 5.45]} rotation={[0, Math.PI, 0]}>
+    <group
+      ref={rootRef}
+      scale={0.76}
+      position={[0.1, 0, 5.45]}
+      rotation={[0, Math.PI, 0]}
+    >
       {/* Ground shadow & subtle position indicator */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
         <circleGeometry args={[0.28, 32]} />

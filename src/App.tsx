@@ -28,8 +28,8 @@ export function App() {
   ]);
   const rotationYRef = useRef<number>(CHARACTER_START_ROTATION_Y);
   const cameraYawRef = useRef<number>(0); // 0 means camera is at +Z looking toward -Z (from road toward Dokja entrance)
-  const cameraPitchRef = useRef<number>(0.24);
-  const cameraDistanceRef = useRef<number>(2.65);
+  const cameraPitchRef = useRef<number>(0.28);
+  const cameraDistanceRef = useRef<number>(2.95);
   const joystickVectorRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const navPathRef = useRef<Array<[number, number]>>([]);
   const pendingArrivalRef = useRef<(() => void) | null>(null);
@@ -39,7 +39,7 @@ export function App() {
   const [characterPos, setCharacterPos] = useState<[number, number, number]>([
     ...CHARACTER_START_POSITION,
   ]);
-  const [cameraDistance, setCameraDistance] = useState<number>(2.65);
+  const [cameraDistance, setCameraDistance] = useState<number>(2.95);
   const [actionState, setActionState] = useState<CharacterActionState>('IDLE');
   const [isSeated, setIsSeated] = useState<boolean>(false);
   const [activeSeat, setActiveSeat] = useState<SeatObjectData | null>(null);
@@ -153,9 +153,9 @@ export function App() {
   // Triggered automatically when the character crosses from the outdoor road through the '독자' entrance door
   const handleEnteredStore = useCallback(() => {
     cameraYawRef.current = 0;
-    cameraPitchRef.current = 0.25;
-    cameraDistanceRef.current = 2.45;
-    setCameraDistance(2.45);
+    cameraPitchRef.current = 0.28;
+    cameraDistanceRef.current = 3.1;
+    setCameraDistance(3.1);
     showToast(
       '✨ 독자서점 내부로 들어왔습니다! 크리스탈 샹들리에와 벽면 추천 테이블, 안쪽 서가까지 한눈에 펼쳐집니다.'
     );
@@ -172,9 +172,9 @@ export function App() {
     walkToAndExecute(0.15, 4.95, () => {
       rotationYRef.current = Math.PI;
       cameraYawRef.current = 0;
-      cameraPitchRef.current = 0.25;
-      cameraDistanceRef.current = 2.45;
-      setCameraDistance(2.45);
+      cameraPitchRef.current = 0.28;
+      cameraDistanceRef.current = 3.1;
+      setCameraDistance(3.1);
       setActionState('IDLE');
     });
   }, [actionState, walkToAndExecute, showToast]);
@@ -187,9 +187,9 @@ export function App() {
     }
     rotationYRef.current = Math.PI;
     cameraYawRef.current = 0;
-    cameraPitchRef.current = 0.25;
-    cameraDistanceRef.current = 2.45;
-    setCameraDistance(2.45);
+    cameraPitchRef.current = 0.28;
+    cameraDistanceRef.current = 3.1;
+    setCameraDistance(3.1);
     showToast('👁️ 독자서점 내부가 한눈에 보이도록 시점을 정렬했습니다.');
   }, [handleEnterStoreFromRoad, showToast]);
 
@@ -526,17 +526,17 @@ export function App() {
     if (alignedYaw > Math.PI) alignedYaw -= Math.PI * 2;
     if (alignedYaw < -Math.PI) alignedYaw += Math.PI * 2;
     cameraYawRef.current = alignedYaw;
-    cameraPitchRef.current = 0.25;
-    const defaultDist = positionRef.current[2] > 6.55 ? 2.65 : 2.25;
+    cameraPitchRef.current = 0.28;
+    const defaultDist = positionRef.current[2] > 6.55 ? 2.95 : 3.1;
     cameraDistanceRef.current = defaultDist;
     setCameraDistance(defaultDist);
   }, []);
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#14110f] select-none">
-      {/* Toast Notification Banner */}
+    <div className="relative h-screen w-screen overflow-hidden bg-[#14110f] select-none touch-none">
+      {/* Toast Notification Banner (Desktop only so mobile screen stays completely clean) */}
       {toastMessage && (
-        <div className="pointer-events-none fixed left-1/2 top-24 z-40 -translate-x-1/2 rounded-full bg-[#191310]/95 px-4 py-1.5 text-xs font-medium text-[#fde68a] shadow-xl border border-[#d4af37]/40 backdrop-blur-md transition-all">
+        <div className="pointer-events-none hidden sm:block fixed left-1/2 top-16 z-40 -translate-x-1/2 rounded-full bg-[#191310]/90 px-4 py-1 text-xs font-medium text-[#fde68a] shadow-xl border border-[#d4af37]/35 backdrop-blur-md transition-all">
           {toastMessage}
         </div>
       )}
