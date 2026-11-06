@@ -758,22 +758,11 @@ export const SEAT_OBJECTS: SeatObjectData[] = [
     name: '창가 원목 독서 암체어',
     type: 'chair',
     description:
-      '출입구 옆 꽃무늬 레이스 커튼과 오렌지 스탠드 조명이 어우러진 창가 1인 독서 의자입니다. 바깥 가로수 풍경을 느끼며 조용히 책을 읽을 수 있습니다.',
-    seatPosition: [-2.45, 0, 5.05],
+      '출입구 왼편 나무 벽면과 창가에 딱 붙어 배치된 1인 원목 독서 책상 의자입니다. 레이스 커튼과 오렌지 머쉬룸 스탠드 조명 아래서 조용히 책을 읽을 수 있습니다.',
+    seatPosition: [-3.55, 0, 5.18],
     seatFacingY: 0, // Facing +Z toward the window desk
-    approachPoint: [-2.2, 0, 4.4],
+    approachPoint: [-3.2, 0, 4.45],
     triggerRadius: 1.5,
-  },
-  {
-    id: 'seat_wood_bench',
-    name: '통원목 벤치 소파',
-    type: 'sofa',
-    description:
-      '오리 마스코트 인형과 파티션 장식장 앞에 놓인 자연 결 그대로의 통원목 벤치 소파입니다. 붉은 페르시안 카펫과 샹들리에, 전면 서가를 한눈에 바라보며 쉴 수 있습니다.',
-    seatPosition: [-2.75, 0, 1.35],
-    seatFacingY: Math.PI / 2, // Facing +X toward the center rug & main bookcase
-    approachPoint: [-1.95, 0, 1.35],
-    triggerRadius: 1.6,
   },
   {
     id: 'seat_yellow_stool',
@@ -804,7 +793,7 @@ export const TABLE_OBJECTS: TableObjectData[] = [
     id: 'table_center_recommend',
     name: '우측 벽 추천 도서 테이블 & 방명록',
     description:
-      '우측 월넛 서가 기둥에 딱 붙어 자리한 메인 추천 도서 테이블입니다. 아래에는 빈티지 군용 나무 상자(‘주의: 방습포장이 아니므로...’)와 노란 스툴이 놓여 있고, 위에는 책방지기 추천 도서, 붉은 장미 화병, 빈티지 카메라, 『READ MORE BOOKS』 거울 사인, 방문객 방명록이 진열되어 있습니다.',
+      '우측 월넛 서가 기둥에 딱 붙어 자리한 메인 추천 도서 테이블입니다. 아래에는 빈티지 군용 나무 상자(‘주의: 방습포장이 아니므로...’)와 노란 스툴이 놓여 있고, 위에는 책방지기 추천 도서, 아크릴 독서대, 가죽 코스터, 붉은 장미 화병, 빈티지 카메라, 엽서 스탠드, 『READ MORE BOOKS』 거울 사인, 오리 피규어와 원목 소품 트레이가 풍성하게 진열되어 있습니다.',
     position: [2.65, 0, -0.05], // Flush against the right wall wood pillar (X = 1.45..3.85)
     bookPlacePosition: [2.05, 0.84, 0.22],
     approachPoint: [2.25, 0, 0.95],
@@ -816,10 +805,10 @@ export const TABLE_OBJECTS: TableObjectData[] = [
     id: 'table_window_desk',
     name: '창가 독서 테이블',
     description:
-      '입구 왼편 창가에 배치된 아늑한 1인 독서 책상입니다. 따뜻한 오렌지색 머쉬룸 램프가 켜져 있어 손에 든 책을 내려놓고 사색에 잠기기 좋습니다.',
-    position: [-2.45, 0, 5.8],
-    bookPlacePosition: [-2.25, 0.78, 5.65],
-    approachPoint: [-2.2, 0, 4.55],
+      '입구 왼편 나무 벽면과 창가에 밀착 배치된 아늑한 1인 독서 책상입니다. 따뜻한 오렌지색 머쉬룸 램프와 노트북, 옆쪽의 북카트와 우산꽂이가 어우러져 있습니다.',
+    position: [-3.58, 0, 5.95],
+    bookPlacePosition: [-3.35, 0.78, 5.78],
+    approachPoint: [-3.2, 0, 4.55],
     approachFacingY: 0,
     triggerRadius: 1.75,
     linkedSeatId: 'seat_window_chair',
@@ -869,7 +858,7 @@ export const SPACE_STORIES: SpaceStoryData[] = [
     details: [
       '하얀 스툴 위에 걸터앉아 서점 안을 가만히 바라보는 시그니처 오리 인형과 코르크 롤·미니 화분',
       '은은한 웜화이트 LED 가지 조명이 만들어내는 아늑한 코너 무드',
-      '바로 앞 통원목 벤치에 앉아 오리와 함께 사진을 남길 수 있는 공간',
+      '파티션 장식장의 다채로운 빈티지 수집품들과 자연스럽게 이어지는 독자서점의 포토 스팟',
     ],
     position: [-3.65, 0.85, 0.65],
     approachPoint: [-2.6, 0, 0.85],
@@ -1009,13 +998,13 @@ export const OBSTACLE_BOXES: ObstacleBox[] = [
     height: 2.8,
     blocksCamera: true,
   },
-  // Window reading desk & trolley (front-left corner)
+  // Window reading desk & trolley (front-left corner flush against West wall)
   {
     id: 'obs_window_desk',
     name: '창가 독서 데스크 및 북카트',
-    minX: -3.9,
-    maxX: -1.15,
-    minZ: 5.3,
+    minX: -4.55,
+    maxX: -1.45,
+    minZ: 5.32,
     maxZ: 6.45,
     height: 1.1,
     blocksCamera: false,
@@ -1029,17 +1018,6 @@ export const OBSTACLE_BOXES: ObstacleBox[] = [
     minZ: -0.48,
     maxZ: 0.72,
     height: 2.7,
-    blocksCamera: false,
-  },
-  // Live-edge wooden bench sofa
-  {
-    id: 'obs_wood_bench',
-    name: '통원목 벤치 소파',
-    minX: -3.35,
-    maxX: -2.4,
-    minZ: 0.75,
-    maxZ: 2.05,
-    height: 0.55,
     blocksCamera: false,
   },
   // Right-wall attached recommendation table + industrial leather machine behind it

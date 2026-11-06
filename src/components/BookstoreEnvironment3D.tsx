@@ -708,23 +708,23 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           5. STOREFRONT ENTRANCE WALL & OPEN DOUBLE DOORS (South Z = +6.6)
          ============================================================ */}
       <group position={[0, 0, 6.6]}>
-        {/* Red Brick Left & Right Columns */}
-        <mesh position={[-4.15, 1.72, 0]} castShadow>
-          <boxGeometry args={[0.92, 3.45, 0.36]} />
+        {/* Red Brick Left & Right Outer Corner Columns (Flush with exterior corners so Left Window reaches West Wall!) */}
+        <mesh position={[-4.42, 1.72, 0.04]} castShadow>
+          <boxGeometry args={[0.36, 3.45, 0.34]} />
           <meshStandardMaterial color="#8c3322" roughness={0.85} />
         </mesh>
-        <mesh position={[4.15, 1.72, 0]} castShadow>
-          <boxGeometry args={[0.92, 3.45, 0.36]} />
+        <mesh position={[4.42, 1.72, 0.04]} castShadow>
+          <boxGeometry args={[0.36, 3.45, 0.34]} />
           <meshStandardMaterial color="#8c3322" roughness={0.85} />
         </mesh>
 
         {/* Top Brick Facade Header & Soldier Brick Lintel */}
         <mesh position={[0, 3.16, 0]}>
-          <boxGeometry args={[8.4, 0.58, 0.36]} />
+          <boxGeometry args={[9.1, 0.58, 0.36]} />
           <meshStandardMaterial color="#8c3322" roughness={0.85} />
         </mesh>
         <mesh position={[0, 2.82, 0.02]}>
-          <boxGeometry args={[7.5, 0.16, 0.38]} />
+          <boxGeometry args={[8.6, 0.16, 0.38]} />
           <meshStandardMaterial color="#732819" roughness={0.88} />
         </mesh>
 
@@ -755,22 +755,22 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           </mesh>
         </group>
 
-        {/* Glass Storefront Windows Left & Right of the Open Doorway */}
-        <mesh position={[-2.25, 1.38, 0.02]}>
-          <planeGeometry args={[2.9, 2.72]} />
+        {/* Glass Storefront Windows Left & Right of the Open Doorway (Reaching all the way to the West/East Walls) */}
+        <mesh position={[-2.52, 1.38, 0.02]}>
+          <planeGeometry args={[3.56, 2.72]} />
           <meshStandardMaterial
             color="#47594e"
             transparent
-            opacity={0.28}
+            opacity={0.26}
             roughness={0.2}
           />
         </mesh>
-        <mesh position={[2.4, 1.38, 0.02]}>
-          <planeGeometry args={[2.75, 2.72]} />
+        <mesh position={[2.68, 1.38, 0.02]}>
+          <planeGeometry args={[3.28, 2.72]} />
           <meshStandardMaterial
             color="#47594e"
             transparent
-            opacity={0.28}
+            opacity={0.26}
             roughness={0.2}
           />
         </mesh>
@@ -851,25 +851,214 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           </Html>
         </group>
 
-        {/* Sheer Floral Lace Curtains (Left & Right Windows) */}
-        <mesh position={[-1.25, 1.45, -0.12]} rotation={[0, 0, 0.08]}>
-          <cylinderGeometry args={[0.18, 0.35, 2.75, 12]} />
-          <meshStandardMaterial
-            color="#f5ebe1"
-            transparent
-            opacity={0.78}
-            roughness={0.9}
-          />
+        {/* ============================================================
+            REALISTIC MULTI-PLEATED GATHERED SHEER FLORAL-LACE CURTAINS
+            (Left Window Curtain by the Desk & Right Window Curtain by Plants)
+           ============================================================ */}
+        {/* Top Wooden/Brass Curtain Rods across Left & Right Windows */}
+        <mesh position={[-2.54, 2.71, -0.2]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.016, 0.016, 3.6, 10]} />
+          <meshStandardMaterial color="#785232" metalness={0.4} roughness={0.5} />
         </mesh>
-        <mesh position={[3.35, 1.45, -0.12]} rotation={[0, 0, -0.08]}>
-          <cylinderGeometry args={[0.22, 0.38, 2.75, 12]} />
-          <meshStandardMaterial
-            color="#f5ebe1"
-            transparent
-            opacity={0.78}
-            roughness={0.9}
-          />
+        <mesh position={[2.68, 2.71, -0.2]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.016, 0.016, 3.3, 10]} />
+          <meshStandardMaterial color="#785232" metalness={0.4} roughness={0.5} />
         </mesh>
+
+        {/* Top Ruffled Lace Valance Header along both Curtain Rods (Continuous soft pleats) */}
+        {Array.from({ length: 34 }).map((_, idx) => {
+          const lx = -4.3 + idx * 0.103;
+          return (
+            <mesh
+              key={`valance-l-${idx}`}
+              position={[lx, 2.64, -0.2 + (idx % 2 === 0 ? -0.012 : 0.012)]}
+            >
+              <cylinderGeometry args={[0.048, 0.054, 0.16, 10]} />
+              <meshStandardMaterial
+                color={idx % 2 === 0 ? '#f8f1e7' : '#efe4d4'}
+                transparent
+                opacity={0.82}
+                roughness={0.92}
+              />
+            </mesh>
+          );
+        })}
+        {Array.from({ length: 32 }).map((_, idx) => {
+          const rx = 1.08 + idx * 0.102;
+          return (
+            <mesh
+              key={`valance-r-${idx}`}
+              position={[rx, 2.64, -0.2 + (idx % 2 === 0 ? -0.012 : 0.012)]}
+            >
+              <cylinderGeometry args={[0.048, 0.054, 0.16, 10]} />
+              <meshStandardMaterial
+                color={idx % 2 === 0 ? '#f8f1e7' : '#efe4d4'}
+                transparent
+                opacity={0.82}
+                roughness={0.92}
+              />
+            </mesh>
+          );
+        })}
+
+        {/* 1) Left Storefront Window Gathered Lace Curtain (Sweeping smoothly into West Corner behind Desk Lamp!) */}
+        <group position={[0, 0, -0.22]}>
+          {Array.from({ length: 18 }).map((_, i) => {
+            const t = i / 17;
+            // Top spreads along the rod from X = -4.32 to X = -2.92; gathers into a snug waist at X = -4.20..-4.02
+            const topX = -4.32 + t * 1.4;
+            const tieX = -4.21 + t * 0.19;
+            const botX = -4.28 + t * 0.36;
+            const waveZ = (i % 2 === 0 ? -0.018 : 0.018) + Math.sin(i * 1.1) * 0.008;
+
+            // Upper sweeping pleat segment (Y = 2.68 down to Y = 1.16)
+            const upMidX = (topX + tieX) / 2;
+            const upMidY = (2.68 + 1.16) / 2;
+            const upDx = topX - tieX;
+            const upDy = 2.68 - 1.16;
+            const upLen = Math.hypot(upDx, upDy);
+            const upAngleZ = -Math.atan2(upDx, upDy);
+
+            // Lower pleated skirt segment (Y = 1.16 down to Y = 0.08)
+            const lowMidX = (tieX + botX) / 2;
+            const lowMidY = (1.16 + 0.08) / 2;
+            const lowDx = tieX - botX;
+            const lowDy = 1.16 - 0.08;
+            const lowLen = Math.hypot(lowDx, lowDy);
+            const lowAngleZ = -Math.atan2(lowDx, lowDy);
+
+            const shade = i % 2 === 0 ? '#f8f1e7' : '#efe4d4';
+
+            return (
+              <group key={`curtain-left-fold-${i}`}>
+                {/* Upper Pleated Drapery Fold */}
+                <mesh
+                  position={[upMidX, upMidY, waveZ]}
+                  rotation={[0, 0, upAngleZ]}
+                >
+                  <cylinderGeometry args={[0.052, 0.022, upLen, 10]} />
+                  <meshStandardMaterial
+                    color={shade}
+                    transparent
+                    opacity={0.86}
+                    roughness={0.92}
+                  />
+                </mesh>
+                {/* Lower Pleated Skirt Fold */}
+                <mesh
+                  position={[lowMidX, lowMidY, waveZ]}
+                  rotation={[0, 0, lowAngleZ]}
+                >
+                  <cylinderGeometry args={[0.022, 0.038, lowLen, 10]} />
+                  <meshStandardMaterial
+                    color={shade}
+                    transparent
+                    opacity={0.88}
+                    roughness={0.92}
+                  />
+                </mesh>
+              </group>
+            );
+          })}
+          {/* Snug Fabric Curtain Tie-Back Band at Y = 1.16 */}
+          <mesh position={[-4.11, 1.16, 0]} rotation={[0, 0, -0.1]}>
+            <cylinderGeometry args={[0.118, 0.112, 0.055, 18]} />
+            <meshStandardMaterial color="#dfd1be" roughness={0.85} />
+          </mesh>
+        </group>
+
+        {/* Black Geometric Wire-Cage Pendant Light & Warm Fairy String Bulbs over Left Window (entrance_interior.jpg) */}
+        <group position={[-3.28, 2.28, -0.52]}>
+          {/* Pendant Cord from Ceiling */}
+          <mesh position={[0, 0.58, 0]}>
+            <cylinderGeometry args={[0.006, 0.006, 1.16, 6]} />
+            <meshBasicMaterial color="#18181b" />
+          </mesh>
+          {/* Black Wire-Cage Diamond Shade */}
+          <mesh>
+            <octahedronGeometry args={[0.17, 0]} />
+            <meshStandardMaterial color="#18181b" wireframe />
+          </mesh>
+          {/* Warm Glowing Edison Bulb inside Cage */}
+          <mesh position={[0, -0.02, 0]}>
+            <sphereGeometry args={[0.055, 12, 12]} />
+            <meshBasicMaterial color="#fde68a" />
+          </mesh>
+          {/* Draped Fairy Light String with 7 Glowing Mini Bulbs toward West Wall */}
+          {Array.from({ length: 7 }).map((_, bIdx) => {
+            const t = (bIdx + 1) / 8;
+            const bx = -t * 1.05;
+            const by = -Math.sin(t * Math.PI) * 0.18 + t * 0.12;
+            const bz = t * 0.25;
+            return (
+              <mesh key={`fairy-${bIdx}`} position={[bx, by, bz]}>
+                <sphereGeometry args={[0.022, 8, 8]} />
+                <meshBasicMaterial color="#fef08a" />
+              </mesh>
+            );
+          })}
+        </group>
+
+        {/* 2) Right Storefront Window Gathered Lace Curtain (Behind Potted Plants & Wine Bottles!) */}
+        <group position={[0, 0, -0.22]}>
+          {Array.from({ length: 18 }).map((_, i) => {
+            const t = i / 17;
+            const topX = 2.88 + t * 1.42;
+            const tieX = 3.96 + t * 0.19;
+            const botX = 3.88 + t * 0.36;
+            const waveZ = (i % 2 === 0 ? -0.018 : 0.018) + Math.cos(i * 1.1) * 0.008;
+
+            const upMidX = (topX + tieX) / 2;
+            const upMidY = (2.68 + 1.16) / 2;
+            const upDx = topX - tieX;
+            const upDy = 2.68 - 1.16;
+            const upLen = Math.hypot(upDx, upDy);
+            const upAngleZ = -Math.atan2(upDx, upDy);
+
+            const lowMidX = (tieX + botX) / 2;
+            const lowMidY = (1.16 + 0.08) / 2;
+            const lowDx = tieX - botX;
+            const lowDy = 1.16 - 0.08;
+            const lowLen = Math.hypot(lowDx, lowDy);
+            const lowAngleZ = -Math.atan2(lowDx, lowDy);
+
+            const shade = i % 2 === 0 ? '#f8f1e7' : '#efe4d4';
+
+            return (
+              <group key={`curtain-right-fold-${i}`}>
+                <mesh
+                  position={[upMidX, upMidY, waveZ]}
+                  rotation={[0, 0, upAngleZ]}
+                >
+                  <cylinderGeometry args={[0.052, 0.022, upLen, 10]} />
+                  <meshStandardMaterial
+                    color={shade}
+                    transparent
+                    opacity={0.86}
+                    roughness={0.92}
+                  />
+                </mesh>
+                <mesh
+                  position={[lowMidX, lowMidY, waveZ]}
+                  rotation={[0, 0, lowAngleZ]}
+                >
+                  <cylinderGeometry args={[0.022, 0.038, lowLen, 10]} />
+                  <meshStandardMaterial
+                    color={shade}
+                    transparent
+                    opacity={0.88}
+                    roughness={0.92}
+                  />
+                </mesh>
+              </group>
+            );
+          })}
+          {/* Snug Fabric Curtain Tie-Back Band at Y = 1.16 */}
+          <mesh position={[4.05, 1.16, 0]} rotation={[0, 0, 0.1]}>
+            <cylinderGeometry args={[0.118, 0.112, 0.055, 18]} />
+            <meshStandardMaterial color="#dfd1be" roughness={0.85} />
+          </mesh>
+        </group>
 
         {/* Potted Plants & 8 Wine Bottles by the Right Window Curtain */}
         <group position={[2.85, 0, -0.45]}>
@@ -924,7 +1113,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
       </group>
 
       {/* ============================================================
-          6. WINDOW READING DESK, BOOK CART & WOODEN ARMCHAIR (Front-Left)
+          6. WINDOW READING DESK (FLUSH AGAINST WEST WALL), BOOK CART & ARMCHAIR
          ============================================================ */}
       {(() => {
         const deskData = TABLE_OBJECTS.find(
@@ -938,35 +1127,78 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
 
         return (
           <group>
-            {/* Rolling Book Cart / Trolley with White Lighthouse & Umbrella Stand next to door */}
-            <group position={[-1.38, 0, 5.75]}>
-              <mesh position={[0, 0.42, 0]} castShadow>
-                <boxGeometry args={[0.62, 0.68, 0.48]} />
-                <meshStandardMaterial color="#eab308" roughness={0.6} />
+            {/* Rolling Book Cart / Trolley ('책값 돌려주기') & Umbrella Stand right beside the Desk */}
+            <group position={[-2.38, 0, 5.88]}>
+              {/* Ochre-Yellow Rolling Cart Body */}
+              <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
+                <boxGeometry args={[0.64, 0.68, 0.48]} />
+                <meshStandardMaterial color="#d99b16" roughness={0.55} />
               </mesh>
+              {/* Dark Rim Tray Top */}
               <mesh position={[0, 0.78, 0]} castShadow>
-                <boxGeometry args={[0.66, 0.04, 0.52]} />
-                <meshStandardMaterial color="#27272a" />
+                <boxGeometry args={[0.68, 0.045, 0.52]} />
+                <meshStandardMaterial color="#27272a" roughness={0.5} />
               </mesh>
-              {/* White Lighthouse Figurine on Cart */}
-              <mesh position={[0.18, 0.9, -0.1]}>
-                <cylinderGeometry args={[0.03, 0.05, 0.22, 10]} />
-                <meshStandardMaterial color="#f8fafc" />
+              {/* 4 Caster Wheels under Cart */}
+              {[
+                [-0.26, 0.04, -0.18],
+                [0.26, 0.04, -0.18],
+                [-0.26, 0.04, 0.18],
+                [0.26, 0.04, 0.18],
+              ].map(([wx, wy, wz], wIdx) => (
+                <mesh key={wIdx} position={[wx, wy, wz]}>
+                  <cylinderGeometry args={[0.035, 0.035, 0.04, 10]} />
+                  <meshStandardMaterial color="#18181b" />
+                </mesh>
+              ))}
+              {/* White '책값 돌려주기' Notice Sheet taped on Cart Side */}
+              <mesh position={[0.322, 0.48, 0]} rotation={[0, Math.PI / 2, 0]}>
+                <planeGeometry args={[0.26, 0.34]} />
+                <meshBasicMaterial color="#f8fafc" />
               </mesh>
-              {/* Black Umbrella Stand & Red Umbrella */}
-              <mesh position={[0.38, 0.22, -0.18]}>
-                <cylinderGeometry args={[0.1, 0.1, 0.44, 12]} />
-                <meshStandardMaterial color="#18181b" />
+              {/* White Lighthouse Figurine with Red Lantern Top on Cart */}
+              <group position={[0.16, 0.8, -0.08]}>
+                <mesh position={[0, 0.11, 0]} castShadow>
+                  <cylinderGeometry args={[0.028, 0.052, 0.22, 12]} />
+                  <meshStandardMaterial color="#f8fafc" roughness={0.4} />
+                </mesh>
+                <mesh position={[0, 0.23, 0]}>
+                  <coneGeometry args={[0.036, 0.05, 12]} />
+                  <meshStandardMaterial color="#dc2626" />
+                </mesh>
+              </group>
+              {/* Small Stack of Curated/Returned Books on Cart Top */}
+              <mesh position={[-0.12, 0.82, 0.04]} castShadow>
+                <boxGeometry args={[0.22, 0.045, 0.18]} />
+                <meshStandardMaterial color="#fef3c7" roughness={0.6} />
               </mesh>
-              <mesh position={[0.38, 0.48, -0.18]} rotation={[0, 0, -0.08]}>
-                <cylinderGeometry args={[0.025, 0.04, 0.65, 10]} />
-                <meshStandardMaterial color="#dc2626" />
+              <mesh position={[-0.1, 0.86, 0.03]} rotation={[0, 0.12, 0]} castShadow>
+                <boxGeometry args={[0.2, 0.038, 0.16]} />
+                <meshStandardMaterial color="#3b82f6" roughness={0.6} />
               </mesh>
+
+              {/* Matte Black Cylindrical Umbrella Stand & Red/Black Umbrellas right next to Cart */}
+              <group position={[0.5, 0, 0.06]}>
+                <mesh position={[0, 0.23, 0]} castShadow>
+                  <cylinderGeometry args={[0.105, 0.1, 0.46, 14]} />
+                  <meshStandardMaterial color="#18181b" roughness={0.5} />
+                </mesh>
+                {/* Bright Red Long Umbrella */}
+                <mesh position={[-0.02, 0.48, 0.02]} rotation={[0.05, 0, -0.08]} castShadow>
+                  <cylinderGeometry args={[0.022, 0.038, 0.68, 10]} />
+                  <meshStandardMaterial color="#dc2626" roughness={0.45} />
+                </mesh>
+                {/* Dark Navy/Black Umbrella */}
+                <mesh position={[0.03, 0.45, -0.03]} rotation={[-0.06, 0, 0.1]} castShadow>
+                  <cylinderGeometry args={[0.02, 0.034, 0.62, 10]} />
+                  <meshStandardMaterial color="#27272a" roughness={0.5} />
+                </mesh>
+              </group>
             </group>
 
-            {/* Window Wooden Desk */}
+            {/* Window Wooden Reading Desk — Pushed Flush Against the West Wood Wall (X = -4.36..-2.80) & Window! */}
             <group
-              position={[-2.45, 0, 5.85]}
+              position={deskData.position}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelectTable(deskData);
@@ -974,43 +1206,90 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
               onPointerOver={() => setHoveredTableId(deskData.id)}
               onPointerOut={() => setHoveredTableId(null)}
             >
+              {/* Warm Walnut Tabletop (1.56m wide so West edge touches West wall at X = -4.36!) */}
               <mesh position={[0, 0.74, 0]} castShadow receiveShadow>
-                <boxGeometry args={[1.45, 0.06, 0.72]} />
-                <meshStandardMaterial color="#8b5a2b" roughness={0.7} />
+                <boxGeometry args={[1.56, 0.055, 0.72]} />
+                <meshStandardMaterial color="#8b5a2b" roughness={0.68} />
               </mesh>
+              {/* Under-table Apron Frame */}
+              <mesh position={[0, 0.68, 0]}>
+                <boxGeometry args={[1.46, 0.06, 0.62]} />
+                <meshStandardMaterial color="#6e441f" roughness={0.75} />
+              </mesh>
+              {/* 4 Wooden Desk Legs */}
               {[
-                [-0.65, 0.37, -0.3],
-                [0.65, 0.37, -0.3],
-                [-0.65, 0.37, 0.3],
-                [0.65, 0.37, 0.3],
+                [-0.72, 0.37, -0.3],
+                [0.72, 0.37, -0.3],
+                [-0.72, 0.37, 0.3],
+                [0.72, 0.37, 0.3],
               ].map(([lx, ly, lz], idx) => (
                 <mesh key={idx} position={[lx, ly, lz]} castShadow>
-                  <boxGeometry args={[0.06, 0.74, 0.06]} />
+                  <boxGeometry args={[0.055, 0.74, 0.055]} />
                   <meshStandardMaterial color="#6e441f" roughness={0.75} />
                 </mesh>
               ))}
-              {/* Signature Orange Mushroom Lamp */}
-              <group position={[-0.45, 0.77, 0.05]}>
-                <mesh position={[0, 0.12, 0]}>
-                  <cylinderGeometry args={[0.03, 0.065, 0.24, 12]} />
+
+              {/* Soft Sage-Green Cylindrical Basket / Pouf tucked under Desk */}
+              <mesh position={[-0.22, 0.22, 0.08]} castShadow>
+                <cylinderGeometry args={[0.17, 0.15, 0.44, 14]} />
+                <meshStandardMaterial color="#68a378" roughness={0.75} />
+              </mesh>
+
+              {/* Signature Glowing Orange Mushroom Lamp (Right/West Corner near Wall & Curtain) */}
+              <group position={[-0.48, 0.77, 0.06]}>
+                <mesh position={[0, 0.12, 0]} castShadow>
+                  <cylinderGeometry args={[0.032, 0.068, 0.24, 14]} />
                   <meshStandardMaterial color="#ea580c" roughness={0.3} />
                 </mesh>
-                <mesh position={[0, 0.24, 0]}>
+                <mesh position={[0, 0.24, 0]} castShadow>
                   <sphereGeometry
-                    args={[0.13, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.58]}
+                    args={[0.135, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.58]}
                   />
                   <meshStandardMaterial
                     color="#f97316"
                     emissive="#ea580c"
-                    emissiveIntensity={windowLampOn ? 0.65 : 0.1}
+                    emissiveIntensity={windowLampOn ? 0.72 : 0.12}
                   />
                 </mesh>
               </group>
-              {/* Small Black Screen / Monitor on Desk */}
-              <mesh position={[0.12, 0.92, 0.12]}>
-                <boxGeometry args={[0.48, 0.3, 0.03]} />
-                <meshStandardMaterial color="#18181b" roughness={0.4} />
+
+              {/* Dark Green/Black Bottle behind Lamp */}
+              <mesh position={[-0.64, 0.87, 0.18]} castShadow>
+                <cylinderGeometry args={[0.032, 0.036, 0.2, 10]} />
+                <meshStandardMaterial color="#1e2923" roughness={0.3} />
               </mesh>
+
+              {/* Open Laptop / Monitor & Keyboard Base in Center of Desk */}
+              <group position={[0.04, 0.77, 0.02]}>
+                {/* Keyboard Base & Desk Mat */}
+                <mesh position={[0, 0.01, -0.06]}>
+                  <boxGeometry args={[0.42, 0.018, 0.26]} />
+                  <meshStandardMaterial color="#27272a" roughness={0.6} />
+                </mesh>
+                {/* Angled Laptop / Monitor Screen */}
+                <mesh position={[0, 0.15, 0.08]} rotation={[0.15, 0, 0]} castShadow>
+                  <boxGeometry args={[0.44, 0.28, 0.022]} />
+                  <meshStandardMaterial color="#18181b" roughness={0.35} />
+                </mesh>
+              </group>
+
+              {/* Small Book Stack & Wooden Pen Cup on Left/East End of Desk */}
+              <mesh position={[0.5, 0.79, 0.08]} castShadow>
+                <boxGeometry args={[0.2, 0.045, 0.25]} />
+                <meshStandardMaterial color="#e7d5b8" roughness={0.65} />
+              </mesh>
+              <mesh position={[0.66, 0.82, 0.14]} castShadow>
+                <cylinderGeometry args={[0.035, 0.035, 0.1, 10]} />
+                <meshStandardMaterial color="#784721" roughness={0.7} />
+              </mesh>
+
+              {hoveredTableId === deskData.id && (
+                <Html position={[0, 1.25, 0]} center zIndexRange={[5, 0]}>
+                  <div className="pointer-events-none whitespace-nowrap rounded-md bg-[#c85a28] px-2.5 py-1 text-xs font-medium text-white shadow-md">
+                    📖 [클릭 / E] 창가 독서 책상 이용하기
+                  </div>
+                </Html>
+              )}
             </group>
 
             {placedBook && (
@@ -1029,7 +1308,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
               </group>
             )}
 
-            {/* Mid-Century Wooden Reading Armchair */}
+            {/* Mid-Century Wooden Reading Armchair in front of Wall-Flush Desk */}
             <group
               position={chairData.seatPosition}
               onClick={(e) => {
@@ -1039,6 +1318,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
               onPointerOver={() => setHoveredSeatId(chairData.id)}
               onPointerOut={() => setHoveredSeatId(null)}
             >
+              {/* Dark Cushioned Seat Pad */}
               <mesh position={[0, 0.44, 0]} castShadow>
                 <boxGeometry args={[0.52, 0.07, 0.5]} />
                 <meshStandardMaterial
@@ -1050,10 +1330,21 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
                   roughness={0.7}
                 />
               </mesh>
-              <mesh position={[0, 0.72, -0.22]} castShadow>
-                <boxGeometry args={[0.54, 0.22, 0.05]} />
+              {/* Curved Walnut Backrest */}
+              <mesh position={[0, 0.74, -0.22]} castShadow>
+                <boxGeometry args={[0.56, 0.22, 0.045]} />
                 <meshStandardMaterial color="#7c4a21" roughness={0.65} />
               </mesh>
+              {/* Left & Right Wooden Armrests */}
+              <mesh position={[-0.25, 0.61, -0.02]} castShadow>
+                <boxGeometry args={[0.045, 0.035, 0.44]} />
+                <meshStandardMaterial color="#7c4a21" roughness={0.65} />
+              </mesh>
+              <mesh position={[0.25, 0.61, -0.02]} castShadow>
+                <boxGeometry args={[0.045, 0.035, 0.44]} />
+                <meshStandardMaterial color="#7c4a21" roughness={0.65} />
+              </mesh>
+              {/* 4 Tapered Wooden Chair Legs + Backrest Supports */}
               {[
                 [-0.22, 0.22, -0.21],
                 [0.22, 0.22, -0.21],
@@ -1086,10 +1377,10 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           <boxGeometry args={[0.2, 3.45, 6.1]} />
           <meshStandardMaterial color="#6e4726" roughness={0.85} />
         </mesh>
-        {/* Multi-tone Reclaimed Wood Plank Strips */}
+        {/* Multi-tone Reclaimed Wood Plank Strips reaching all the way to the Storefront Window! */}
         {[0.3, 0.65, 1.0, 1.35, 1.7, 2.05, 2.4, 2.75, 3.1].map((py, idx) => (
-          <mesh key={idx} position={[-4.39, py, 3.3]}>
-            <boxGeometry args={[0.022, 0.22, 5.4]} />
+          <mesh key={idx} position={[-4.39, py, 3.55]}>
+            <boxGeometry args={[0.022, 0.22, 6.05]} />
             <meshStandardMaterial
               color={
                 idx % 3 === 0
@@ -1296,48 +1587,6 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           </Html>
         )}
       </group>
-
-      {/* Live-Edge Wooden Bench Sofa (`seat_wood_bench`) */}
-      {(() => {
-        const bench = SEAT_OBJECTS.find((s) => s.id === 'seat_wood_bench')!;
-        const isActive = activeSeatId === bench.id;
-        return (
-          <group
-            position={bench.seatPosition}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectSeat(bench);
-            }}
-            onPointerOver={() => setHoveredSeatId(bench.id)}
-            onPointerOut={() => setHoveredSeatId(null)}
-          >
-            <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
-              <boxGeometry args={[0.52, 0.08, 1.28]} />
-              <meshStandardMaterial
-                color={
-                  hoveredSeatId === bench.id || isActive ? '#9c6334' : '#7c4d25'
-                }
-                roughness={0.75}
-              />
-            </mesh>
-            <mesh position={[0, 0.2, -0.45]} castShadow>
-              <boxGeometry args={[0.44, 0.4, 0.1]} />
-              <meshStandardMaterial color="#5e3a1b" roughness={0.8} />
-            </mesh>
-            <mesh position={[0, 0.2, 0.45]} castShadow>
-              <boxGeometry args={[0.44, 0.4, 0.1]} />
-              <meshStandardMaterial color="#5e3a1b" roughness={0.8} />
-            </mesh>
-            {hoveredSeatId === bench.id && (
-              <Html position={[0, 0.85, 0]} center zIndexRange={[5, 0]}>
-                <div className="pointer-events-none whitespace-nowrap rounded-md bg-[#c85a28] px-2.5 py-1 text-xs font-medium text-white shadow-md">
-                  🛋️ [클릭 / E] 통원목 벤치 소파에 앉기
-                </div>
-              </Html>
-            )}
-          </group>
-        );
-      })()}
 
       {/* Room-Divider Open Cabinet (`story_divider_cabinet`) */}
       <group
@@ -1846,6 +2095,10 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
                 <boxGeometry args={[2.35, 0.05, 0.94]} />
                 <meshStandardMaterial color="#6e4423" roughness={0.65} />
               </mesh>
+              <mesh position={[0, 0.745, 0]}>
+                <boxGeometry args={[2.31, 0.03, 0.9]} />
+                <meshStandardMaterial color="#18181b" roughness={0.5} />
+              </mesh>
               {/* Black Steel Legs */}
               {[
                 [-1.12, 0.39, -0.42],
@@ -1859,10 +2112,15 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
                 </mesh>
               ))}
 
-              {/* Vintage Military-Style Wooden Crate underneath ('주의: 1. 이 포장은 방습포장이 아니므로...') */}
-              <group position={[-0.25, 0.34, 0]}>
+              {/* ============================================================
+                  UNDER-TABLE PROPS (center_table.jpg):
+                  1) Vintage Military Wooden Crate ('주의: 이 포장은 방습포장이 아니므로...')
+                  2) Round Wooden Serving Board & Tan Leather Mat resting on Crate
+                  3) Stacked Grey & Bright Yellow Molded Stools on Right Side
+                 ============================================================ */}
+              <group position={[-0.25, 0.33, 0]}>
                 <mesh castShadow receiveShadow>
-                  <boxGeometry args={[1.48, 0.66, 0.76]} />
+                  <boxGeometry args={[1.48, 0.64, 0.76]} />
                   <meshStandardMaterial color="#c49a60" roughness={0.85} />
                 </mesh>
                 {/* White Shipping Label on Left Side of Crate */}
@@ -1870,92 +2128,606 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
                   <planeGeometry args={[0.24, 0.22]} />
                   <meshBasicMaterial color="#f8fafc" />
                 </mesh>
+                {/* Stencil Warning Text Block on Center-Right of Crate */}
+                <mesh position={[0.15, 0.04, 0.382]}>
+                  <planeGeometry args={[0.52, 0.24]} />
+                  <meshBasicMaterial color="#b0854b" />
+                </mesh>
                 {/* Vertical Wood Battens on Crate */}
                 {[-0.7, 0, 0.7].map((bx, bIdx) => (
                   <mesh key={bIdx} position={[bx, 0, 0.382]}>
-                    <boxGeometry args={[0.05, 0.66, 0.015]} />
+                    <boxGeometry args={[0.055, 0.64, 0.018]} />
                     <meshStandardMaterial color="#a67c46" />
                   </mesh>
                 ))}
+                {/* Round Wooden Cutting/Serving Board with Handle resting on Top of Crate */}
+                <group position={[-0.22, 0.335, 0.08]}>
+                  <mesh castShadow>
+                    <cylinderGeometry args={[0.2, 0.2, 0.025, 20]} />
+                    <meshStandardMaterial color="#8c5828" roughness={0.65} />
+                  </mesh>
+                  <mesh position={[0.22, 0, 0.04]} rotation={[0, -0.2, 0]}>
+                    <boxGeometry args={[0.12, 0.022, 0.05]} />
+                    <meshStandardMaterial color="#8c5828" roughness={0.65} />
+                  </mesh>
+                </group>
+                {/* Warm Tan Leather Mat resting on Top Right of Crate */}
+                <mesh position={[0.3, 0.332, 0.06]} rotation={[0, 0.08, 0]}>
+                  <boxGeometry args={[0.42, 0.015, 0.32]} />
+                  <meshStandardMaterial color="#c87d32" roughness={0.55} />
+                </mesh>
               </group>
 
-              {/* Stacked Yellow & Grey Plastic Stools tucked under right side of table (114029_11.jpg) */}
-              <mesh position={[0.78, 0.24, 0]} castShadow>
-                <cylinderGeometry args={[0.18, 0.22, 0.48, 14]} />
-                <meshStandardMaterial color="#eab308" roughness={0.4} />
-              </mesh>
-              <mesh position={[0.78, 0.36, 0]} castShadow>
-                <cylinderGeometry args={[0.18, 0.22, 0.5, 14]} />
-                <meshStandardMaterial color="#57534e" roughness={0.5} />
-              </mesh>
+              {/* Stacked Yellow & Charcoal-Grey Stools tucked under right side of table */}
+              <group position={[0.78, 0, 0.02]}>
+                {/* Bottom Bright Yellow Stool */}
+                <mesh position={[0, 0.4, 0]} castShadow>
+                  <boxGeometry args={[0.32, 0.038, 0.32]} />
+                  <meshStandardMaterial color="#eab308" roughness={0.35} />
+                </mesh>
+                {[
+                  [-0.13, 0.2, -0.13],
+                  [0.13, 0.2, -0.13],
+                  [-0.13, 0.2, 0.13],
+                  [0.13, 0.2, 0.13],
+                ].map(([sx, sy, sz], sIdx) => (
+                  <mesh key={`ystool-${sIdx}`} position={[sx, sy, sz]} castShadow>
+                    <boxGeometry args={[0.04, 0.4, 0.04]} />
+                    <meshStandardMaterial color="#eab308" roughness={0.35} />
+                  </mesh>
+                ))}
+                {/* Top Stacked Charcoal-Grey Stool */}
+                <group position={[0, 0.12, 0]} rotation={[0, 0.18, 0]}>
+                  <mesh position={[0, 0.42, 0]} castShadow>
+                    <boxGeometry args={[0.33, 0.04, 0.33]} />
+                    <meshStandardMaterial color="#57534e" roughness={0.45} />
+                  </mesh>
+                  {[
+                    [-0.14, 0.21, -0.14],
+                    [0.14, 0.21, -0.14],
+                    [-0.14, 0.21, 0.14],
+                    [0.14, 0.21, 0.14],
+                  ].map(([sx, sy, sz], sIdx) => (
+                    <mesh key={`gstool-${sIdx}`} position={[sx, sy, sz]} castShadow>
+                      <boxGeometry args={[0.042, 0.42, 0.042]} />
+                      <meshStandardMaterial color="#57534e" roughness={0.45} />
+                    </mesh>
+                  ))}
+                </group>
+              </group>
 
-              {/* Detailed Props on Top of Recommendation Table (114029_11.jpg): */}
-              {/* 7 Stacks of Curated Featured Books lined along front edge */}
+              {/* ============================================================
+                  RICH TABLETOP CURATION & PROPS (center_table.jpg):
+                  1) Front Row: 7 Multi-Book Curated Stacks with Belly Bands
+                  2) Left-Back: Open Guestbook + Pen, 3 Round Leather Coasters,
+                     2 Wooden Bookmark/Card Holders, Wooden Pen Cup
+                  3) Center-Left: Clear Acrylic Book Stand with Open Illustrated Book
+                  4) Center: Glass Vase with 3 Red Roses + Vintage Silver/Black Camera
+                  5) Center-Right: Silver 'READ MORE BOOKS' Mirror + 'Postcard' Tag
+                     & 3 Upright Framed Art Postcards
+                  6) Right Side: Walnut Organizer Tray with Brass Handles,
+                     2 White Duck Figurines (one with Yellow Hat!), Aroma Bottle,
+                     Magazine/Zine Rack & Brass Goods Tray
+                 ============================================================ */}
+
+              {/* 1) Front Row: 7 Multi-Book Stacks lined along the front edge (Z = +0.26) */}
               {[
-                [-0.92, '#f5efe6', 0.09],
-                [-0.62, '#e7d5b8', 0.06],
-                [-0.36, '#dc2626', 0.05],
-                [-0.12, '#f8fafc', 0.05],
-                [0.14, '#7c2d12', 0.06],
-                [0.4, '#fef3c7', 0.07],
-                [0.68, '#d97736', 0.06],
-              ].map(([bx, col, h], bIdx) => (
+                {
+                  bx: -0.94,
+                  books: [
+                    { col: '#d6d3cd', h: 0.032, band: '#3f3f46' },
+                    { col: '#f5efe6', h: 0.03, band: '#1e293b' },
+                    { col: '#ffffff', h: 0.028, band: '#0f172a' }, // 東京傳
+                  ],
+                },
+                {
+                  bx: -0.65,
+                  books: [
+                    { col: '#c29b61', h: 0.026, band: '#78350f' },
+                    { col: '#e7d5b8', h: 0.028, band: '#ea580c' }, // 작지만, 독자
+                  ],
+                },
+                {
+                  bx: -0.38,
+                  books: [
+                    { col: '#27272a', h: 0.024, band: '#dc2626' },
+                    { col: '#dc2626', h: 0.026, band: '#fef08a' }, // Coral/Red Essay
+                  ],
+                },
+                {
+                  bx: -0.11,
+                  books: [
+                    { col: '#e2e8f0', h: 0.024, band: '#475569' },
+                    { col: '#f8fafc', h: 0.028, band: '#dc2626' }, // W O R K
+                  ],
+                },
+                {
+                  bx: 0.16,
+                  books: [
+                    { col: '#451a03', h: 0.026, band: '#d97706' },
+                    { col: '#7c2d12', h: 0.028, band: '#fde68a' },
+                  ],
+                },
+                {
+                  bx: 0.43,
+                  books: [
+                    { col: '#d6d3cd', h: 0.025, band: '#15803d' },
+                    { col: '#fef3c7', h: 0.028, band: '#b45309' },
+                    { col: '#fffbeb', h: 0.024, band: '#c2410c' },
+                  ],
+                },
+                {
+                  bx: 0.7,
+                  books: [
+                    { col: '#9a3412', h: 0.025, band: '#fef3c7' },
+                    { col: '#ea580c', h: 0.028, band: '#18181b' },
+                  ],
+                },
+              ].map((stack, sIdx) => {
+                let currentY = 0.805;
+                return (
+                  <group key={`front-stack-${sIdx}`} position={[stack.bx, 0, 0.25]}>
+                    {stack.books.map((bk, bIdx) => {
+                      const yPos = currentY + bk.h / 2;
+                      currentY += bk.h + 0.002;
+                      const rotY = (bIdx % 2 === 0 ? 1 : -1) * 0.035;
+                      return (
+                        <group
+                          key={bIdx}
+                          position={[0, yPos, 0]}
+                          rotation={[0, rotY, 0]}
+                        >
+                          <mesh castShadow>
+                            <boxGeometry args={[0.205, bk.h, 0.265]} />
+                            <meshStandardMaterial color={bk.col} roughness={0.55} />
+                          </mesh>
+                          {/* Book Belly Band (띠지) / Cover Graphic */}
+                          <mesh position={[0, bk.h / 2 + 0.001, 0.04]}>
+                            <boxGeometry args={[0.207, 0.003, 0.065]} />
+                            <meshBasicMaterial color={bk.band} />
+                          </mesh>
+                        </group>
+                      );
+                    })}
+                  </group>
+                );
+              })}
+
+              {/* 2) Left-Back Props: Open Guestbook + Pen, 3 Round Leather Coasters, Card Holders & Pen Cup */}
+              {/* Open Guestbook Notebook & Silver Fountain Pen */}
+              <group position={[-0.95, 0.815, -0.08]} rotation={[0, 0.08, 0]}>
+                {/* Dark Leather Notebook Cover */}
+                <mesh>
+                  <boxGeometry args={[0.29, 0.012, 0.21]} />
+                  <meshStandardMaterial color="#292524" roughness={0.7} />
+                </mesh>
+                {/* Left & Right Cream Pages */}
+                <mesh position={[-0.068, 0.009, 0]} rotation={[0, 0, -0.03]}>
+                  <boxGeometry args={[0.13, 0.008, 0.195]} />
+                  <meshStandardMaterial color="#fffbeb" roughness={0.8} />
+                </mesh>
+                <mesh position={[0.068, 0.009, 0]} rotation={[0, 0, 0.03]}>
+                  <boxGeometry args={[0.13, 0.008, 0.195]} />
+                  <meshStandardMaterial color="#fffbeb" roughness={0.8} />
+                </mesh>
+                {/* Red Ribbon Bookmark */}
+                <mesh position={[0, 0.014, 0.02]}>
+                  <boxGeometry args={[0.008, 0.003, 0.21]} />
+                  <meshBasicMaterial color="#dc2626" />
+                </mesh>
+                {/* Silver Pen resting diagonally */}
                 <mesh
-                  key={bIdx}
-                  position={[Number(bx), 0.805 + Number(h) / 2, 0.26]}
+                  position={[0.04, 0.018, 0.02]}
+                  rotation={[Math.PI / 2, 0.45, 0]}
+                >
+                  <cylinderGeometry args={[0.005, 0.004, 0.14, 8]} />
+                  <meshStandardMaterial
+                    color="#e2e8f0"
+                    metalness={0.85}
+                    roughness={0.2}
+                  />
+                </mesh>
+              </group>
+
+              {/* 3 Round Handcrafted Leather Coasters (Red, Tan, Cream) */}
+              {[
+                [-0.72, 0.812, -0.02, '#b91c1c'],
+                [-0.64, 0.814, -0.08, '#c26a27'],
+                [-0.74, 0.816, -0.14, '#e5d3b3'],
+              ].map(([cx, cy, cz, cCol], cIdx) => (
+                <mesh
+                  key={`coaster-${cIdx}`}
+                  position={[Number(cx), Number(cy), Number(cz)]}
                   castShadow
                 >
-                  <boxGeometry args={[0.21, Number(h), 0.26]} />
-                  <meshStandardMaterial color={String(col)} roughness={0.6} />
+                  <cylinderGeometry args={[0.052, 0.052, 0.008, 18]} />
+                  <meshStandardMaterial color={String(cCol)} roughness={0.6} />
                 </mesh>
               ))}
 
-              {/* Open Book on Book Stand + Vintage Camera + Red Rose in Bottle */}
-              <mesh
-                position={[-0.45, 0.88, -0.02]}
-                rotation={[-0.35, 0, 0]}
-                castShadow
-              >
-                <boxGeometry args={[0.32, 0.22, 0.02]} />
-                <meshStandardMaterial color="#fffbeb" />
-              </mesh>
-              {/* Vintage Film Camera */}
-              <mesh position={[-0.18, 0.85, 0.04]} castShadow>
-                <boxGeometry args={[0.12, 0.09, 0.08]} />
-                <meshStandardMaterial color="#18181b" metalness={0.5} />
-              </mesh>
-              {/* Red Rose in Glass Bottle */}
-              <mesh position={[-0.18, 0.88, -0.1]}>
-                <cylinderGeometry args={[0.025, 0.035, 0.14, 10]} />
-                <meshStandardMaterial color="#e2e8f0" transparent opacity={0.7} />
-              </mesh>
-              <mesh position={[-0.18, 0.98, -0.1]}>
-                <sphereGeometry args={[0.045, 10, 10]} />
-                <meshStandardMaterial color="#dc2626" />
-              </mesh>
-              {/* Angled 'READ MORE BOOKS' Mirror Sign */}
-              <mesh
-                position={[0.18, 0.92, -0.15]}
-                rotation={[-0.25, 0, 0]}
-                castShadow
-              >
-                <boxGeometry args={[0.34, 0.24, 0.02]} />
-                <meshStandardMaterial
-                  color="#cbd5e1"
-                  metalness={0.75}
-                  roughness={0.18}
-                />
-              </mesh>
-              {/* Magazine / Newspaper Rack on Right End of Table */}
-              <mesh position={[0.92, 0.92, -0.05]} rotation={[0, -0.3, 0]}>
-                <boxGeometry args={[0.28, 0.26, 0.22]} />
-                <meshStandardMaterial color="#d6d3cd" />
-              </mesh>
+              {/* 2 Wooden Bookmark / Business Card Stands & Wooden Pen Cup */}
+              <group position={[-0.86, 0.805, -0.28]}>
+                {/* Wooden Card Holder 1 */}
+                <mesh position={[0, 0.015, 0]} castShadow>
+                  <boxGeometry args={[0.11, 0.03, 0.045]} />
+                  <meshStandardMaterial color="#784721" roughness={0.7} />
+                </mesh>
+                <mesh position={[0, 0.055, 0]} rotation={[-0.12, 0, 0]}>
+                  <boxGeometry args={[0.09, 0.075, 0.004]} />
+                  <meshBasicMaterial color="#fef3c7" />
+                </mesh>
+                {/* Wooden Card Holder 2 (Tall Bookmarks) */}
+                <mesh position={[0.15, 0.015, 0.02]} castShadow>
+                  <boxGeometry args={[0.1, 0.03, 0.045]} />
+                  <meshStandardMaterial color="#5c3417" roughness={0.7} />
+                </mesh>
+                <mesh position={[0.13, 0.075, 0.02]} rotation={[-0.1, 0, 0.04]}>
+                  <boxGeometry args={[0.038, 0.12, 0.004]} />
+                  <meshBasicMaterial color="#ea580c" />
+                </mesh>
+                <mesh position={[0.17, 0.07, 0.02]} rotation={[-0.1, 0, -0.05]}>
+                  <boxGeometry args={[0.038, 0.11, 0.004]} />
+                  <meshBasicMaterial color="#1d4ed8" />
+                </mesh>
+                {/* Wooden Pen/Pencil Cup */}
+                <group position={[-0.14, 0, -0.02]}>
+                  <mesh position={[0, 0.05, 0]} castShadow>
+                    <cylinderGeometry args={[0.034, 0.032, 0.1, 12]} />
+                    <meshStandardMaterial color="#854d27" roughness={0.65} />
+                  </mesh>
+                  <mesh position={[-0.01, 0.11, 0]} rotation={[0.1, 0, 0.15]}>
+                    <cylinderGeometry args={[0.004, 0.004, 0.09, 6]} />
+                    <meshBasicMaterial color="#eab308" />
+                  </mesh>
+                  <mesh position={[0.012, 0.115, 0.008]} rotation={[-0.1, 0, -0.12]}>
+                    <cylinderGeometry args={[0.004, 0.004, 0.1, 6]} />
+                    <meshBasicMaterial color="#dc2626" />
+                  </mesh>
+                </group>
+              </group>
+
+              {/* 3) Center-Left: Slanted Clear Acrylic Book Stand with Open Illustrated Book Spread */}
+              <group position={[-0.44, 0.805, -0.09]}>
+                {/* Acrylic Stand Base & Backplate */}
+                <mesh position={[0, 0.01, 0.03]}>
+                  <boxGeometry args={[0.28, 0.01, 0.16]} />
+                  <meshStandardMaterial
+                    color="#e2e8f0"
+                    transparent
+                    opacity={0.55}
+                    roughness={0.15}
+                  />
+                </mesh>
+                <mesh position={[0, 0.095, -0.01]} rotation={[-0.42, 0, 0]}>
+                  <boxGeometry args={[0.3, 0.19, 0.01]} />
+                  <meshStandardMaterial
+                    color="#e2e8f0"
+                    transparent
+                    opacity={0.5}
+                    roughness={0.15}
+                  />
+                </mesh>
+                {/* Open Book Spread resting on Acrylic Stand */}
+                <group position={[0, 0.098, 0.005]} rotation={[-0.42, 0, 0]}>
+                  {/* Book Cover Backing */}
+                  <mesh castShadow>
+                    <boxGeometry args={[0.33, 0.21, 0.016]} />
+                    <meshStandardMaterial color="#3b2818" roughness={0.6} />
+                  </mesh>
+                  {/* Left & Right Open Pages */}
+                  <mesh position={[-0.078, 0, 0.01]} rotation={[0, 0.08, 0]}>
+                    <boxGeometry args={[0.15, 0.195, 0.008]} />
+                    <meshStandardMaterial color="#fffbeb" roughness={0.7} />
+                  </mesh>
+                  <mesh position={[0.078, 0, 0.01]} rotation={[0, -0.08, 0]}>
+                    <boxGeometry args={[0.15, 0.195, 0.008]} />
+                    <meshStandardMaterial color="#fffbeb" roughness={0.7} />
+                  </mesh>
+                  {/* Photo Illustration Block on Left Page */}
+                  <mesh position={[-0.078, 0.02, 0.015]} rotation={[0, 0.08, 0]}>
+                    <planeGeometry args={[0.11, 0.09]} />
+                    <meshBasicMaterial color="#0284c7" />
+                  </mesh>
+                </group>
+              </group>
+
+              {/* 4) Center: Clear Glass Vase with 3 Red Roses + Vintage Silver/Black Film Camera */}
+              {/* Clear Glass Bottle Vase with Green Stems & 3 Blooming Red Roses */}
+              <group position={[-0.16, 0.805, -0.18]}>
+                <mesh position={[0, 0.075, 0]} castShadow>
+                  <cylinderGeometry args={[0.024, 0.038, 0.15, 14]} />
+                  <meshStandardMaterial
+                    color="#e2e8f0"
+                    transparent
+                    opacity={0.65}
+                    roughness={0.15}
+                  />
+                </mesh>
+                {/* Green Flower Stems */}
+                <mesh position={[0, 0.14, 0]} rotation={[0.08, 0, 0.08]}>
+                  <cylinderGeometry args={[0.004, 0.004, 0.18, 6]} />
+                  <meshStandardMaterial color="#15803d" />
+                </mesh>
+                <mesh position={[-0.01, 0.13, 0.01]} rotation={[-0.1, 0, -0.15]}>
+                  <cylinderGeometry args={[0.004, 0.004, 0.16, 6]} />
+                  <meshStandardMaterial color="#15803d" />
+                </mesh>
+                {/* 3 Red Rose Blooms & Green Leaves */}
+                <mesh position={[0.01, 0.22, 0.01]} castShadow>
+                  <sphereGeometry args={[0.042, 12, 12]} />
+                  <meshStandardMaterial color="#dc2626" roughness={0.55} />
+                </mesh>
+                <mesh position={[-0.032, 0.195, 0.015]} castShadow>
+                  <sphereGeometry args={[0.034, 10, 10]} />
+                  <meshStandardMaterial color="#b91c1c" roughness={0.55} />
+                </mesh>
+                <mesh position={[0.032, 0.19, -0.015]} castShadow>
+                  <sphereGeometry args={[0.032, 10, 10]} />
+                  <meshStandardMaterial color="#ef4444" roughness={0.55} />
+                </mesh>
+                <mesh position={[-0.03, 0.16, 0]} rotation={[0.4, 0, 0.5]}>
+                  <boxGeometry args={[0.04, 0.006, 0.022]} />
+                  <meshStandardMaterial color="#166534" />
+                </mesh>
+              </group>
+
+              {/* Vintage Silver & Black Rangefinder Film Camera (Yashica / Leica style) */}
+              <group position={[-0.14, 0.805, -0.01]} rotation={[0, -0.15, 0]}>
+                {/* Black Leatherette Body */}
+                <mesh position={[0, 0.038, 0]} castShadow>
+                  <boxGeometry args={[0.135, 0.072, 0.056]} />
+                  <meshStandardMaterial color="#18181b" roughness={0.55} />
+                </mesh>
+                {/* Brushed Silver Top Plate */}
+                <mesh position={[0, 0.08, 0]} castShadow>
+                  <boxGeometry args={[0.136, 0.022, 0.057]} />
+                  <meshStandardMaterial
+                    color="#e2e8f0"
+                    metalness={0.82}
+                    roughness={0.22}
+                  />
+                </mesh>
+                {/* Silver & Black Protruding Lens Barrel */}
+                <mesh
+                  position={[0.008, 0.042, 0.042]}
+                  rotation={[Math.PI / 2, 0, 0]}
+                  castShadow
+                >
+                  <cylinderGeometry args={[0.028, 0.03, 0.036, 16]} />
+                  <meshStandardMaterial
+                    color="#cbd5e1"
+                    metalness={0.8}
+                    roughness={0.25}
+                  />
+                </mesh>
+                {/* Dark Glass Lens Element */}
+                <mesh
+                  position={[0.008, 0.042, 0.061]}
+                  rotation={[Math.PI / 2, 0, 0]}
+                >
+                  <cylinderGeometry args={[0.021, 0.021, 0.004, 16]} />
+                  <meshStandardMaterial
+                    color="#0f172a"
+                    metalness={0.9}
+                    roughness={0.1}
+                  />
+                </mesh>
+                {/* Shutter Dial & Rewind Knob */}
+                <mesh position={[-0.042, 0.096, 0]}>
+                  <cylinderGeometry args={[0.012, 0.012, 0.012, 10]} />
+                  <meshStandardMaterial color="#cbd5e1" metalness={0.85} />
+                </mesh>
+                <mesh position={[0.045, 0.095, 0]}>
+                  <cylinderGeometry args={[0.01, 0.01, 0.01, 10]} />
+                  <meshStandardMaterial color="#cbd5e1" metalness={0.85} />
+                </mesh>
+              </group>
+
+              {/* 5) Center-Right: Angled 'READ MORE BOOKS' Mirror + 'Postcard' Tag & 3 Framed Postcard Stands */}
+              <group position={[0.2, 0.805, -0.18]} rotation={[0, -0.06, 0]}>
+                {/* Silver Metallic Mirror Frame */}
+                <mesh
+                  position={[0, 0.135, 0]}
+                  rotation={[-0.24, 0, 0]}
+                  castShadow
+                >
+                  <boxGeometry args={[0.35, 0.27, 0.022]} />
+                  <meshStandardMaterial
+                    color="#e2e8f0"
+                    metalness={0.78}
+                    roughness={0.2}
+                  />
+                </mesh>
+                {/* Reflective Inner Mirror Surface */}
+                <mesh position={[0, 0.135, 0.013]} rotation={[-0.24, 0, 0]}>
+                  <planeGeometry args={[0.31, 0.23]} />
+                  <meshStandardMaterial
+                    color="#cbd5e1"
+                    metalness={0.92}
+                    roughness={0.08}
+                  />
+                </mesh>
+                {/* Top 'READ MORE BOOKS' Header Bar on Mirror */}
+                <mesh position={[0, 0.215, 0.033]} rotation={[-0.24, 0, 0]}>
+                  <planeGeometry args={[0.22, 0.028]} />
+                  <meshBasicMaterial color="#1e293b" />
+                </mesh>
+                {/* Yellow 'Postcard' Sticker Tag on Bottom-Right of Mirror */}
+                <mesh position={[0.11, 0.055, 0.048]} rotation={[-0.24, 0, 0.05]}>
+                  <planeGeometry args={[0.085, 0.036]} />
+                  <meshBasicMaterial color="#facc15" />
+                </mesh>
+              </group>
+
+              {/* 3 Upright Framed Art Postcards / Mini Photo Stands in front of Mirror */}
+              {[
+                [0.06, 0.855, -0.02, '#7c2d12', '#fde68a', 0.08],
+                [0.2, 0.85, 0.0, '#1e293b', '#38bdf8', -0.04],
+                [0.34, 0.855, -0.02, '#784721', '#fb7185', -0.12],
+              ].map(([px, py, pz, frameCol, artCol, rotY], pIdx) => (
+                <group
+                  key={`postcard-frame-${pIdx}`}
+                  position={[Number(px), Number(py), Number(pz)]}
+                  rotation={[-0.18, Number(rotY), 0]}
+                >
+                  <mesh castShadow>
+                    <boxGeometry args={[0.105, 0.11, 0.014]} />
+                    <meshStandardMaterial color={String(frameCol)} roughness={0.6} />
+                  </mesh>
+                  <mesh position={[0, 0, 0.008]}>
+                    <planeGeometry args={[0.082, 0.088]} />
+                    <meshBasicMaterial color={String(artCol)} />
+                  </mesh>
+                </group>
+              ))}
+
+              {/* 6) Right Side: Walnut Organizer Tray with Brass Handles, 2 White Duck Figurines, Magazines & Goods */}
+              {/* Dark Walnut Wooden Organizer Tray with Brass Side Handles */}
+              <group position={[0.58, 0.805, -0.05]} rotation={[0, -0.05, 0]}>
+                {/* Tray Base & 4 Raised Wooden Walls */}
+                <mesh position={[0, 0.012, 0]} castShadow>
+                  <boxGeometry args={[0.32, 0.024, 0.28]} />
+                  <meshStandardMaterial color="#4a2a14" roughness={0.7} />
+                </mesh>
+                <mesh position={[0, 0.036, 0.13]}>
+                  <boxGeometry args={[0.32, 0.032, 0.018]} />
+                  <meshStandardMaterial color="#3b2110" roughness={0.7} />
+                </mesh>
+                <mesh position={[0, 0.036, -0.13]}>
+                  <boxGeometry args={[0.32, 0.032, 0.018]} />
+                  <meshStandardMaterial color="#3b2110" roughness={0.7} />
+                </mesh>
+                <mesh position={[-0.15, 0.036, 0]}>
+                  <boxGeometry args={[0.018, 0.032, 0.28]} />
+                  <meshStandardMaterial color="#3b2110" roughness={0.7} />
+                </mesh>
+                <mesh position={[0.15, 0.036, 0]}>
+                  <boxGeometry args={[0.018, 0.032, 0.28]} />
+                  <meshStandardMaterial color="#3b2110" roughness={0.7} />
+                </mesh>
+                {/* Brass Handles on Left & Right of Tray */}
+                <mesh position={[-0.165, 0.042, 0]}>
+                  <boxGeometry args={[0.012, 0.014, 0.08]} />
+                  <meshStandardMaterial color="#d4af37" metalness={0.85} roughness={0.2} />
+                </mesh>
+                <mesh position={[0.165, 0.042, 0]}>
+                  <boxGeometry args={[0.012, 0.014, 0.08]} />
+                  <meshStandardMaterial color="#d4af37" metalness={0.85} roughness={0.2} />
+                </mesh>
+
+                {/* Cute White Duck Figurine #1 (Wearing a Yellow Hat!) inside Tray */}
+                <group position={[-0.06, 0.025, 0.04]} rotation={[0, 0.25, 0]}>
+                  {/* Plump White Body & Head */}
+                  <mesh position={[0, 0.038, 0]} castShadow>
+                    <sphereGeometry args={[0.042, 12, 12]} />
+                    <meshStandardMaterial color="#ffffff" roughness={0.6} />
+                  </mesh>
+                  <mesh position={[0, 0.082, 0.012]} castShadow>
+                    <sphereGeometry args={[0.03, 12, 12]} />
+                    <meshStandardMaterial color="#ffffff" roughness={0.6} />
+                  </mesh>
+                  {/* Orange Beak */}
+                  <mesh
+                    position={[0, 0.08, 0.044]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                  >
+                    <coneGeometry args={[0.012, 0.026, 8]} />
+                    <meshStandardMaterial color="#ea580c" />
+                  </mesh>
+                  {/* Yellow Hat on Duck's Head! */}
+                  <mesh position={[0, 0.108, 0.01]}>
+                    <cylinderGeometry args={[0.026, 0.032, 0.018, 12]} />
+                    <meshStandardMaterial color="#facc15" roughness={0.5} />
+                  </mesh>
+                </group>
+
+                {/* Cute White Duck Figurine #2 inside Tray */}
+                <group position={[0.05, 0.025, 0.05]} rotation={[0, -0.3, 0]}>
+                  <mesh position={[0, 0.032, 0]} castShadow>
+                    <sphereGeometry args={[0.035, 12, 12]} />
+                    <meshStandardMaterial color="#ffffff" roughness={0.6} />
+                  </mesh>
+                  <mesh position={[0, 0.068, 0.01]} castShadow>
+                    <sphereGeometry args={[0.024, 10, 10]} />
+                    <meshStandardMaterial color="#ffffff" roughness={0.6} />
+                  </mesh>
+                  <mesh
+                    position={[0, 0.066, 0.036]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                  >
+                    <coneGeometry args={[0.01, 0.022, 8]} />
+                    <meshStandardMaterial color="#ea580c" />
+                  </mesh>
+                </group>
+
+                {/* Amber Diffuser Bottle & Small Goods Boxes in Back of Tray */}
+                <mesh position={[-0.07, 0.055, -0.06]} castShadow>
+                  <cylinderGeometry args={[0.022, 0.024, 0.065, 10]} />
+                  <meshStandardMaterial color="#92400e" roughness={0.25} />
+                </mesh>
+                <mesh position={[0.06, 0.045, -0.05]} castShadow>
+                  <boxGeometry args={[0.09, 0.045, 0.08]} />
+                  <meshStandardMaterial color="#fef3c7" roughness={0.6} />
+                </mesh>
+              </group>
+
+              {/* Tall Slanted Magazine, Zine & Kraft Envelope Rack leaning against Right Wood Pillar */}
+              <group position={[0.92, 0.805, -0.1]} rotation={[0, -0.22, 0]}>
+                {/* Wooden Rack Backing */}
+                <mesh position={[0, 0.14, -0.06]} castShadow>
+                  <boxGeometry args={[0.3, 0.28, 0.04]} />
+                  <meshStandardMaterial color="#784721" roughness={0.7} />
+                </mesh>
+                {/* Tall Kraft Envelope & Art Magazine */}
+                <mesh position={[-0.02, 0.15, -0.02]} rotation={[-0.12, 0, 0]} castShadow>
+                  <boxGeometry args={[0.26, 0.28, 0.022]} />
+                  <meshStandardMaterial color="#d6b88e" roughness={0.75} />
+                </mesh>
+                {/* Colorful Indie Zine 1 */}
+                <mesh position={[0.02, 0.12, 0.01]} rotation={[-0.15, 0, -0.04]} castShadow>
+                  <boxGeometry args={[0.22, 0.23, 0.018]} />
+                  <meshStandardMaterial color="#f8fafc" roughness={0.6} />
+                </mesh>
+                {/* Colorful Indie Zine 2 (Teal/Blue) */}
+                <mesh position={[-0.03, 0.095, 0.035]} rotation={[-0.18, 0, 0.03]} castShadow>
+                  <boxGeometry args={[0.19, 0.18, 0.016]} />
+                  <meshStandardMaterial color="#0284c7" roughness={0.55} />
+                </mesh>
+                {/* Front Illustrated Postcard Pack */}
+                <mesh position={[0.03, 0.065, 0.055]} rotation={[-0.2, 0, 0]} castShadow>
+                  <boxGeometry args={[0.14, 0.12, 0.015]} />
+                  <meshStandardMaterial color="#f97316" roughness={0.55} />
+                </mesh>
+              </group>
+
+              {/* Small Round Brass Tray with Badges & Stickers on Front-Right Corner */}
+              <group position={[0.94, 0.812, 0.22]}>
+                <mesh castShadow>
+                  <cylinderGeometry args={[0.085, 0.075, 0.014, 18]} />
+                  <meshStandardMaterial
+                    color="#d4af37"
+                    metalness={0.78}
+                    roughness={0.25}
+                  />
+                </mesh>
+                <mesh position={[-0.02, 0.01, 0.01]}>
+                  <cylinderGeometry args={[0.022, 0.022, 0.006, 12]} />
+                  <meshBasicMaterial color="#dc2626" />
+                </mesh>
+                <mesh position={[0.025, 0.01, -0.015]}>
+                  <cylinderGeometry args={[0.02, 0.02, 0.006, 12]} />
+                  <meshBasicMaterial color="#2563eb" />
+                </mesh>
+                <mesh position={[0.01, 0.01, 0.028]}>
+                  <cylinderGeometry args={[0.018, 0.018, 0.006, 12]} />
+                  <meshBasicMaterial color="#facc15" />
+                </mesh>
+              </group>
 
               {hoveredTableId === centerTable.id && (
-                <Html position={[0, 1.22, 0]} center zIndexRange={[5, 0]}>
+                <Html position={[0, 1.24, 0]} center zIndexRange={[5, 0]}>
                   <div className="pointer-events-none whitespace-nowrap rounded-md bg-[#c85a28] px-2.5 py-1 text-xs font-medium text-white shadow-md">
-                    📚 [클릭 / E] 추천 도서 테이블 & 방명록 이용하기
+                    📚 [클릭 / E] 추천 도서 테이블 & 방명록 · 소품 구경하기
                   </div>
                 </Html>
               )}
