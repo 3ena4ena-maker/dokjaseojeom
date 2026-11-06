@@ -1463,142 +1463,213 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
       )}
 
       {/* ============================================================
-          MODAL 8 (FEATURE #3): VISUAL IMAGE-BASED DOKJA STAMP TOUR CARD
+          MODAL 8 (FEATURE #3): '숨은그림찾기' VISUAL POSTER STAMP TOUR
+          (Inspired by '무무를 찾아라!' — Find & Tap 5 Hidden Objects in 3D!)
          ============================================================ */}
       {showStampTourModal && (
         <div
           data-testid="stamp-tour-modal"
-          className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-4 backdrop-blur-sm"
+          className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 sm:p-4 backdrop-blur-sm"
         >
-          <div className="relative max-h-[90vh] max-w-2xl w-full overflow-y-auto rounded-3xl bg-[#1b1411] p-4 sm:p-5 text-[#f5efe6] shadow-2xl border border-[#d97736]/60">
-            {/* Compact Visual Header */}
-            <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#332721]">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#c85a28] text-white shadow">
-                  <Award className="h-4 w-4" />
+          <div className="relative max-h-[92vh] max-w-2xl w-full overflow-y-auto rounded-3xl bg-[#1b1411] p-4 sm:p-5 text-[#f5efe6] shadow-2xl border-2 border-[#d97736]/70">
+            {/* Poster Banner Header ('무무를 찾아라!' style) */}
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f8f1e5] px-4 py-3 text-[#191310] shadow-inner border-2 border-[#191310]">
+              <div className="flex items-center gap-3">
+                {/* Circular Illustrated Mumu Badge */}
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e5dccb] border-2 border-[#191310] shadow">
+                  <svg viewBox="0 0 64 64" className="h-10 w-10">
+                    {/* Floppy Ears */}
+                    <ellipse cx="14" cy="34" rx="7" ry="13" fill="#09090b" />
+                    <ellipse cx="50" cy="34" rx="7" ry="13" fill="#09090b" />
+                    {/* Fluffy Black Head */}
+                    <circle cx="32" cy="30" r="17" fill="#1c1917" />
+                    {/* Red Collar & Gold Bell */}
+                    <rect x="20" y="43" width="24" height="5" rx="2.5" fill="#dc2626" />
+                    <circle cx="32" cy="49" r="3.5" fill="#facc15" stroke="#191310" strokeWidth="1" />
+                    {/* Eyes */}
+                    <circle cx="25" cy="27" r="3" fill="#ffffff" />
+                    <circle cx="39" cy="27" r="3" fill="#ffffff" />
+                    <circle cx="25" cy="27" r="1.7" fill="#09090b" />
+                    <circle cx="39" cy="27" r="1.7" fill="#09090b" />
+                    {/* Nose & Pink Tongue */}
+                    <ellipse cx="32" cy="32" rx="3.2" ry="2.4" fill="#09090b" />
+                    <path d="M29 36 Q32 43 35 36 Z" fill="#fb7185" />
+                  </svg>
                 </div>
                 <div>
-                  <h2 className="font-serif text-base sm:text-lg font-bold text-[#f8f1e5]">
-                    독자서점 스탬프 투어
+                  <h2 className="font-serif text-lg sm:text-xl font-black tracking-tight text-[#191310]">
+                    독자 숨은그림을 찾아라!
                   </h2>
-                  <p className="text-[11px] text-[#b8a99a]">
-                    사진을 터치해 5곳을 방문하고 스탬프를 모아보세요
+                  <p className="text-[11px] sm:text-xs font-bold text-[#5c4028]">
+                    책장·액자·테이블 속에 숨은 5가지를 직접 찾아 터치하세요!
                   </p>
                 </div>
               </div>
 
-              {/* 5 Mini Stamp Circles + Close Button */}
               <div className="flex items-center gap-2">
-                <div className="hidden sm:flex items-center gap-1 rounded-full bg-[#120d0b] px-2.5 py-1 border border-[#332721]">
-                  {STAMP_MISSIONS.map((m) => {
-                    const done = collectedStampIds.includes(m.id);
-                    return (
-                      <span
-                        key={m.id}
-                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs transition ${
-                          done
-                            ? 'bg-amber-500 text-[#191310] shadow ring-1 ring-[#fde68a]'
-                            : 'bg-[#241c17] text-[#6b5d52] opacity-50'
-                        }`}
-                      >
-                        {done ? '✓' : m.stepNumber}
-                      </span>
-                    );
-                  })}
-                </div>
+                <span className="rounded-full bg-[#c85a28] px-3 py-1 text-xs font-extrabold text-white shadow">
+                  {collectedStampIds.length} / {STAMP_MISSIONS.length}
+                </span>
                 <button
                   type="button"
                   onClick={() => setShowStampTourModal(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#191310] text-[#f8f1e5] hover:bg-[#c85a28] transition"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            {/* 3x2 Visual Polaroid Photo Stamp Grid (5 Photo Spots + 1 Leather Bookmark Reward Card) */}
+            {/* 3x2 Visual Hidden-Object Target Grid (5 Illustrated Targets + 1 Bookmark Reward) */}
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
               {STAMP_MISSIONS.map((mission) => {
                 const isCollected = collectedStampIds.includes(mission.id);
                 return (
-                  <button
+                  <div
                     key={mission.id}
-                    type="button"
-                    onClick={() => {
-                      setShowStampTourModal(false);
-                      onWalkToStampMission(mission);
-                    }}
-                    className={`group relative overflow-hidden rounded-2xl border text-left transition-all ${
+                    onClick={() => setShowStampTourModal(false)}
+                    className={`group cursor-pointer relative overflow-hidden rounded-2xl border-2 text-left transition-all ${
                       isCollected
-                        ? 'bg-[#261d17] border-amber-400/80 shadow-lg ring-1 ring-amber-400/30'
-                        : 'bg-[#1f1713] border-[#382b24] hover:border-[#c85a28]'
+                        ? 'bg-[#261d17] border-amber-400 shadow-lg ring-1 ring-amber-400/40'
+                        : 'bg-[#221914] border-[#3d2e26] hover:border-[#e09f3e]'
                     }`}
                   >
-                    {/* Real Bookstore Spot Photo */}
-                    <div className="relative h-32 sm:h-36 w-full overflow-hidden bg-black">
-                      <img
-                        src={mission.photoUrl}
-                        alt={mission.title}
-                        className={`h-full w-full object-cover transition duration-300 group-hover:scale-105 ${
-                          isCollected
-                            ? 'brightness-100 contrast-105'
-                            : 'brightness-55 contrast-95 grayscale-[30%]'
-                        }`}
-                      />
-
-                      {/* Step Number Pill on Top-Left */}
-                      <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-[#fde68a] backdrop-blur-xs">
-                        #{mission.stepNumber} {mission.zone}
+                    {/* Custom Visual Illustration of the Exact Hidden Object */}
+                    <div className="relative flex h-32 sm:h-36 w-full items-center justify-center overflow-hidden bg-gradient-to-b from-[#2c211b] to-[#17110e] p-3">
+                      {/* Hint Zone Pill on Top-Left */}
+                      <span className="absolute left-2 top-2 z-10 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-[#fde68a]">
+                        힌트 · {mission.zone}
                       </span>
 
-                      {/* Visual Stamp Overlay on Center of Photo */}
-                      {isCollected ? (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/15">
-                          <div className="-rotate-12 flex h-16 w-16 flex-col items-center justify-center rounded-full border-2 border-[#fde68a] bg-[#c85a28]/92 text-white shadow-xl ring-4 ring-[#c85a28]/30">
-                            <span className="text-lg leading-none">
-                              {mission.icon}
+                      {/* Target #1: Book with Gold Star Bookmark */}
+                      {mission.id === 'hidden_book_dokja' && (
+                        <svg viewBox="0 0 100 100" className="h-24 w-24 drop-shadow-lg">
+                          {/* Surrounding shelf books silhouette */}
+                          <rect x="14" y="28" width="14" height="58" rx="2" fill="#3b281e" opacity="0.7" />
+                          <rect x="72" y="25" width="14" height="61" rx="2" fill="#3b281e" opacity="0.7" />
+                          {/* Target Terracotta Book */}
+                          <rect x="31" y="24" width="38" height="62" rx="3" fill="#c85a28" stroke="#fde68a" strokeWidth="2" />
+                          <rect x="31" y="62" width="38" height="10" fill="#fde68a" />
+                          {/* Red Bookmark Ribbon & Gold Star sticking out of top */}
+                          <rect x="47" y="12" width="6" height="15" fill="#dc2626" />
+                          <polygon
+                            points="50,2 53,9 61,9 55,14 57,21 50,17 43,21 45,14 39,9 47,9"
+                            fill="#facc15"
+                            stroke="#ffffff"
+                            strokeWidth="1"
+                          />
+                        </svg>
+                      )}
+
+                      {/* Target #2: Red-Roof House Painting Frame */}
+                      {mission.id === 'hidden_house_frame' && (
+                        <svg viewBox="0 0 100 100" className="h-24 w-24 drop-shadow-lg">
+                          {/* Wooden Frame */}
+                          <rect x="16" y="14" width="68" height="68" rx="4" fill="#a67c52" stroke="#fde68a" strokeWidth="2" />
+                          {/* Blue Sky Canvas */}
+                          <rect x="24" y="22" width="52" height="52" fill="#38bdf8" />
+                          {/* Golden Sun */}
+                          <circle cx="35" cy="33" r="6" fill="#facc15" />
+                          {/* Green Hill */}
+                          <path d="M24 56 Q50 46 76 56 L76 74 L24 74 Z" fill="#22c55e" />
+                          {/* White House & Red Roof */}
+                          <rect x="41" y="45" width="20" height="16" fill="#ffffff" />
+                          <polygon points="38,45 51,32 64,45" fill="#dc2626" />
+                          <rect x="48" y="52" width="6" height="9" fill="#78350f" />
+                        </svg>
+                      )}
+
+                      {/* Target #3: Blue Butterfly Specimen Frame */}
+                      {mission.id === 'hidden_butterfly_frame' && (
+                        <svg viewBox="0 0 100 100" className="h-24 w-24 drop-shadow-lg">
+                          {/* Dark Frame & Cream Matte */}
+                          <rect x="18" y="14" width="64" height="68" rx="4" fill="#27272a" stroke="#fde68a" strokeWidth="2" />
+                          <rect x="25" y="21" width="50" height="54" fill="#fef3c7" />
+                          {/* Blue Butterfly Wings */}
+                          <ellipse cx="40" cy="43" rx="12" ry="10" transform="rotate(-20 40 43)" fill="#0ea5e9" />
+                          <ellipse cx="60" cy="43" rx="12" ry="10" transform="rotate(20 60 43)" fill="#0ea5e9" />
+                          <ellipse cx="42" cy="55" rx="8" ry="7" fill="#38bdf8" />
+                          <ellipse cx="58" cy="55" rx="8" ry="7" fill="#38bdf8" />
+                          {/* Butterfly Body */}
+                          <rect x="48.5" y="35" width="3" height="24" rx="1.5" fill="#18181b" />
+                        </svg>
+                      )}
+
+                      {/* Target #4: White Duck with Yellow Sun-Hat */}
+                      {mission.id === 'hidden_hat_duck' && (
+                        <svg viewBox="0 0 100 100" className="h-24 w-24 drop-shadow-lg">
+                          {/* Plump White Duck Body & Head */}
+                          <ellipse cx="50" cy="66" rx="22" ry="16" fill="#ffffff" />
+                          <circle cx="52" cy="44" r="14" fill="#ffffff" />
+                          {/* Orange Beak & Eye */}
+                          <polygon points="64,41 78,45 64,49" fill="#ea580c" />
+                          <circle cx="56" cy="41" r="2.2" fill="#18181b" />
+                          {/* Bright Yellow Hat with Red Band */}
+                          <ellipse cx="51" cy="31" rx="19" ry="4" fill="#facc15" />
+                          <rect x="40" y="19" width="22" height="12" rx="4" fill="#facc15" />
+                          <rect x="40" y="27" width="22" height="3.5" fill="#dc2626" />
+                        </svg>
+                      )}
+
+                      {/* Target #5: Cute Black Puppy 'Mumu' */}
+                      {mission.id === 'hidden_mumu_dog' && (
+                        <svg viewBox="0 0 100 100" className="h-24 w-24 drop-shadow-lg">
+                          {/* Floppy Black Ears */}
+                          <ellipse cx="26" cy="50" rx="9" ry="18" fill="#09090b" />
+                          <ellipse cx="74" cy="50" rx="9" ry="18" fill="#09090b" />
+                          {/* Fluffy Black Head */}
+                          <circle cx="50" cy="46" r="23" fill="#1c1917" stroke="#fde68a" strokeWidth="1.5" />
+                          {/* Red Collar & Gold Bell */}
+                          <rect x="33" y="64" width="34" height="7" rx="3.5" fill="#dc2626" />
+                          <circle cx="50" cy="72" r="5" fill="#facc15" />
+                          {/* Shiny Eyes */}
+                          <circle cx="41" cy="42" r="4" fill="#ffffff" />
+                          <circle cx="59" cy="42" r="4" fill="#ffffff" />
+                          <circle cx="41" cy="42" r="2.2" fill="#09090b" />
+                          <circle cx="59" cy="42" r="2.2" fill="#09090b" />
+                          {/* Nose & Cute Pink Tongue */}
+                          <ellipse cx="50" cy="49" rx="4.5" ry="3.2" fill="#09090b" />
+                          <path d="M46 54 Q50 63 54 54 Z" fill="#fb7185" />
+                        </svg>
+                      )}
+
+                      {/* Stamp Seal Overlay when Found */}
+                      {isCollected && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                          <div className="-rotate-12 flex h-16 w-16 flex-col items-center justify-center rounded-full border-2 border-[#fde68a] bg-[#c85a28]/95 text-white shadow-xl ring-4 ring-[#c85a28]/30">
+                            <span className="text-xs font-black tracking-tight text-[#fde68a]">
+                              찾았다!
                             </span>
-                            <span className="mt-0.5 text-[9px] font-extrabold tracking-widest text-[#fde68a]">
+                            <span className="text-[10px] font-extrabold text-white">
                               DOKJA ✓
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="flex h-14 w-14 flex-col items-center justify-center rounded-full border-2 border-dashed border-[#fde68a]/65 bg-black/45 text-[#f8f1e5] group-hover:bg-[#c85a28]/85 group-hover:border-white transition">
-                            <span className="text-base leading-none">
-                              {mission.icon}
-                            </span>
-                            <span className="mt-0.5 text-[9px] font-semibold">
-                              이동하기
                             </span>
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Minimal 1-Line Photo Caption */}
-                    <div className="flex items-center justify-between px-2.5 py-2">
+                    {/* Minimal 1-Line Caption */}
+                    <div className="flex items-center justify-between px-2.5 py-2 bg-[#191310]">
                       <span className="truncate font-serif text-xs font-bold text-[#f8f1e5]">
                         {mission.title}
                       </span>
                       {isCollected ? (
                         <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-amber-400" />
                       ) : (
-                        <span className="shrink-0 text-[10px] font-semibold text-[#e09f3e]">
-                          👣 방문
+                        <span className="shrink-0 text-[10px] font-semibold text-[#fde68a]">
+                          🔍 미발견
                         </span>
                       )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
 
               {/* 6th Card: Visual Golden Leather Bookmark Reward Card */}
               <div
-                className={`relative flex flex-col justify-between overflow-hidden rounded-2xl border p-3 transition ${
+                className={`relative flex flex-col justify-between overflow-hidden rounded-2xl border-2 p-3 transition ${
                   collectedStampIds.length >= STAMP_MISSIONS.length
-                    ? 'bg-gradient-to-br from-[#472916] via-[#2f1b0e] to-[#1b110b] border-2 border-[#d4af37] shadow-xl'
+                    ? 'bg-gradient-to-br from-[#472916] via-[#2f1b0e] to-[#1b110b] border-[#d4af37] shadow-xl'
                     : 'bg-[#18120f] border-dashed border-[#44352c]'
                 }`}
               >
@@ -1645,8 +1716,9 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                               id: `gb_stamp_${Date.now()}`,
                               nickname: `🏅 ${reader}`,
                               message:
-                                '독자서점 5대 시그니처 스탬프 투어(5/5) 완주!',
-                              favBook: heldBook?.title || '독자서점 스탬프 완주',
+                                '독자서점 숨은그림찾기 5개(5/5) 모두 발견 완주!',
+                              favBook:
+                                heldBook?.title || '독자서점 숨은그림찾기 완주',
                               date: '2026.11.06',
                             },
                             ...prev,
@@ -1665,7 +1737,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                   )
                 ) : (
                   <div className="text-center text-[11px] font-semibold text-[#9c8c7c]">
-                    🔒 5곳 완주 시 가죽 책갈피 발급
+                    🔒 5개 모두 찾으면 책갈피 발급
                   </div>
                 )}
               </div>
@@ -1681,7 +1753,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                   }}
                   className="text-[11px] text-[#9c8c7c] underline hover:text-white"
                 >
-                  스탬프 초기화
+                  숨은그림 기록 초기화
                 </button>
               </div>
             )}

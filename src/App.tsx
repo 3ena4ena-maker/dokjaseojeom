@@ -77,7 +77,7 @@ export function App() {
   }>({ rain: 0, paper: 0, fireplace: 0 });
   const [collectedStampIds, setCollectedStampIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('dokja_stamps_v1');
+      const saved = localStorage.getItem('dokja_hidden_stamps_v2');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -137,34 +137,46 @@ export function App() {
     setToastMessage(msg);
   }, []);
 
-  // Unlock a signature treasure-hunt stamp by mission ID
-  const unlockStampMission = useCallback(
-    (mission: StampMissionData) => {
-      setCollectedStampIds((prev) => {
-        if (prev.includes(mission.id)) return prev;
-        const next = [...prev, mission.id];
-        try {
-          localStorage.setItem('dokja_stamps_v1', JSON.stringify(next));
-        } catch {
-          // ignore storage errors
-        }
-        bookstoreBgm.playStampCollectedChime();
-        if (next.length >= STAMP_MISSIONS.length) {
-          setToastMessage(
-            `🎉 5대 시그니처 보물찾기 완주 성공! (${next.length}/${STAMP_MISSIONS.length}) 상단 🏅 스탬프 창에서 ‘명예 독자 책갈피’를 확인해 보세요!`
-          );
-        } else {
-          setToastMessage(
-            `🏅 보물찾기 스탬프 획득! (${next.length}/${STAMP_MISSIONS.length}) — ${mission.icon} ${mission.title}`
-          );
-        }
-        return next;
-      });
+  // Unlock a hidden-object stamp mission when the user directly spots and taps it in 3D
+  const unlockStampMission = useCallback((mission: StampMissionData) => {
+    setCollectedStampIds((prev) => {
+      if (prev.includes(mission.id)) {
+        setToastMessage(
+          `✅ 이미 찾은 숨은그림입니다: ${mission.icon} ${mission.title}`
+        );
+        return prev;
+      }
+      const next = [...prev, mission.id];
+      try {
+        localStorage.setItem('dokja_hidden_stamps_v2', JSON.stringify(next));
+      } catch {
+        // ignore storage errors
+      }
+      bookstoreBgm.playStampCollectedChime();
+      if (next.length >= STAMP_MISSIONS.length) {
+        setToastMessage(
+          `🎉 숨은그림찾기 5개 모두 발견! (${next.length}/${STAMP_MISSIONS.length}) 상단 🏅 스탬프 창에서 ‘명예 독자 책갈피’를 확인해 보세요!`
+        );
+      } else {
+        setToastMessage(
+          `🔍 숨은그림 발견! (${next.length}/${STAMP_MISSIONS.length}) — ${mission.icon} ${mission.title}`
+        );
+      }
+      return next;
+    });
+  }, []);
+
+  const handleFindHiddenStamp = useCallback(
+    (missionId: string) => {
+      const matched = STAMP_MISSIONS.find((m) => m.id === missionId);
+      if (matched) {
+        unlockStampMission(matched);
+      }
     },
-    []
+    [unlockStampMission]
   );
 
-  // Unlock stamp if any linked object (story, table, seat) is interacted with
+  // Unlock stamp if a linked book (e.g. 『작지만, 독자』) is selected
   const unlockStampByLinkedId = useCallback(
     (linkedId: string) => {
       const matched = STAMP_MISSIONS.find((m) =>
@@ -176,23 +188,6 @@ export function App() {
     },
     [unlockStampMission]
   );
-
-  // Auto-detect proximity to any of the 5 signature spots when walking inside the bookstore
-  useEffect(() => {
-    const [cx, , cz] = characterPos;
-    if (cz > 6.3) return; // Only trigger inside the bookstore
-    for (const mission of STAMP_MISSIONS) {
-      if (collectedStampIds.includes(mission.id)) continue;
-      const dist = Math.hypot(
-        cx - mission.targetPosition[0],
-        cz - mission.targetPosition[1]
-      );
-      if (dist <= mission.triggerRadius) {
-        unlockStampMission(mission);
-        break;
-      }
-    }
-  }, [characterPos, collectedStampIds, unlockStampMission]);
 
   const handleChangeAsmrLevels = useCallback(
     (next: { rain: number; paper: number; fireplace: number }) => {
@@ -212,11 +207,11 @@ export function App() {
   const handleResetStamps = useCallback(() => {
     setCollectedStampIds([]);
     try {
-      localStorage.removeItem('dokja_stamps_v1');
+      localStorage.removeItem('dokja_hidden_stamps_v2');
     } catch {
       // ignore
     }
-    setToastMessage('🔄 독자서점 5대 시그니처 보물찾기 스탬프를 초기화했습니다.');
+    setToastMessage('🔄 독자서점 숨은그림찾기 스탬프를 초기화했습니다.');
   }, []);
 
   useEffect(() => {
@@ -386,6 +381,7 @@ export function App() {
     (book: BookItem) => {
       if (actionState === 'INTERACTING') return;
       setBrowsingShelf(null);
+      unlockStampByLinkedId(book.id);
 
       // If already holding this exact book, open its details modal directly
       if (heldBook?.id === book.id) {
@@ -424,7 +420,7 @@ export function App() {
         }
       );
     },
-    [actionState, heldBook, walkToAndExecute, showToast]
+    [actionState, heldBook, walkToAndExecute, showToast, unlockStampByLinkedId]
   );
 
   // Return currently held book back to its bookshelf
@@ -703,9 +699,12 @@ export function App() {
       {toastMessage && (
         <div
           className={`pointer-events-none fixed left-1/2 top-14 sm:top-16 z-40 -translate-x-1/2 max-w-[92vw] truncate rounded-full bg-[#191310]/92 px-3.5 py-1 text-[11px] sm:text-xs font-medium text-[#fde68a] shadow-xl border border-[#d4af37]/40 backdrop-blur-md transition-all ${
+            toastMessage.startsWith('🔍') ||
             toastMessage.startsWith('🏅') ||
             toastMessage.startsWith('🎉') ||
-            toastMessage.startsWith('🔔')
+            toastMessage.startsWith('🔔') ||
+            toastMessage.startsWith('🔊') ||
+            toastMessage.startsWith('🔇')
               ? 'block'
               : 'hidden sm:block'
           }`}
@@ -772,6 +771,8 @@ export function App() {
           onSelectTable={handleSelectTable}
           onSelectStory={handleSelectStory}
           onSelectWaypoint={handleSelectWaypoint}
+          collectedStampIds={collectedStampIds}
+          onFindHiddenStamp={handleFindHiddenStamp}
         />
       </Canvas>
 

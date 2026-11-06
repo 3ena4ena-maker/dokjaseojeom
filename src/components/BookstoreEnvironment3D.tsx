@@ -37,6 +37,8 @@ interface BookstoreEnvironment3DProps {
   onSelectTable: (table: TableObjectData) => void;
   onSelectStory: (story: SpaceStoryData) => void;
   onSelectWaypoint: (wp: WaypointNode) => void;
+  collectedStampIds: string[];
+  onFindHiddenStamp: (missionId: string) => void;
 }
 
 interface DecorativeBookSpine {
@@ -62,12 +64,15 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
   onSelectTable,
   onSelectStory,
   onSelectWaypoint,
+  collectedStampIds,
+  onFindHiddenStamp,
 }) => {
   const [hoveredBookId, setHoveredBookId] = useState<string | null>(null);
   const [hoveredSeatId, setHoveredSeatId] = useState<string | null>(null);
   const [hoveredTableId, setHoveredTableId] = useState<string | null>(null);
   const [hoveredStoryId, setHoveredStoryId] = useState<string | null>(null);
   const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null);
+  const [hoveredHiddenId, setHoveredHiddenId] = useState<string | null>(null);
   const [floorCursor, setFloorCursor] = useState<{
     x: number;
     z: number;
@@ -1428,16 +1433,68 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           </group>
         ))}
 
-        {/* Small Framed Dokja Storefront Photo on Wood Wall (113957_71.jpg) */}
-        <group position={[-4.37, 2.05, 1.15]}>
-          <mesh>
-            <boxGeometry args={[0.04, 0.32, 0.32]} />
-            <meshStandardMaterial color="#a67c52" />
+        {/* HIDDEN OBJECT #2 (`hidden_house_frame`): Framed Painting of Red-Roof House on Green Hill */}
+        <group
+          position={[-4.36, 2.02, 1.15]}
+          onClick={(e) => {
+            e.stopPropagation();
+            onFindHiddenStamp('hidden_house_frame');
+          }}
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            setHoveredHiddenId('hidden_house_frame');
+          }}
+          onPointerOut={() => setHoveredHiddenId(null)}
+        >
+          {/* Generous invisible touch/click collider */}
+          <mesh visible={false}>
+            <boxGeometry args={[0.25, 0.48, 0.48]} />
           </mesh>
-          <mesh position={[0.022, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-            <planeGeometry args={[0.26, 0.26]} />
-            <meshBasicMaterial color="#b45309" />
+          {/* Warm Wooden Picture Frame */}
+          <mesh castShadow>
+            <boxGeometry args={[0.045, 0.36, 0.36]} />
+            <meshStandardMaterial
+              color={
+                hoveredHiddenId === 'hidden_house_frame' ? '#d97706' : '#a67c52'
+              }
+              roughness={0.55}
+            />
           </mesh>
+          {/* Sky-Blue Canvas Background */}
+          <mesh position={[0.024, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+            <planeGeometry args={[0.29, 0.29]} />
+            <meshBasicMaterial color="#38bdf8" />
+          </mesh>
+          {/* Green Hill at Bottom of Painting */}
+          <mesh position={[0.026, -0.085, 0]} rotation={[0, Math.PI / 2, 0]}>
+            <planeGeometry args={[0.29, 0.12]} />
+            <meshBasicMaterial color="#22c55e" />
+          </mesh>
+          {/* Little White House Body in Painting */}
+          <mesh position={[0.028, -0.015, 0.01]} rotation={[0, Math.PI / 2, 0]}>
+            <planeGeometry args={[0.095, 0.075]} />
+            <meshBasicMaterial color="#ffffff" />
+          </mesh>
+          {/* Bright Red Roof Triangle in Painting */}
+          <mesh position={[0.03, 0.042, 0.01]} rotation={[0, 0, -Math.PI / 2]}>
+            <coneGeometry args={[0.068, 0.06, 4]} />
+            <meshBasicMaterial color="#dc2626" />
+          </mesh>
+          {/* Golden Sun in Top-Left of Painting */}
+          <mesh position={[0.028, 0.088, -0.075]} rotation={[0, Math.PI / 2, 0]}>
+            <circleGeometry args={[0.026, 14]} />
+            <meshBasicMaterial color="#facc15" />
+          </mesh>
+          {(hoveredHiddenId === 'hidden_house_frame' ||
+            collectedStampIds.includes('hidden_house_frame')) && (
+            <Html position={[0.12, 0.26, 0]} center zIndexRange={[6, 0]}>
+              <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#c85a28] px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg ring-1 ring-[#fde68a]">
+                {collectedStampIds.includes('hidden_house_frame')
+                  ? '🖼️ 빨간 지붕 집 액자 ✓'
+                  : '🔍 [터치] 숨은 그림 발견!'}
+              </div>
+            </Html>
+          )}
         </group>
 
         {/* 3-Tier Floating Wooden Book Display Ledges (Z = +1.1..+4.9) */}
@@ -1693,6 +1750,89 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           <boxGeometry args={[0.42, 0.3, 0.24]} />
           <meshStandardMaterial color="#3b82f6" roughness={0.5} />
         </mesh>
+
+        {/* HIDDEN OBJECT #5 (`hidden_mumu_dog`): Cute Black Puppy 'Mumu' Hiding on Lower Shelf of Divider Cabinet! */}
+        <group
+          position={[-0.18, 0.68, 0.08]}
+          onClick={(e) => {
+            e.stopPropagation();
+            onFindHiddenStamp('hidden_mumu_dog');
+          }}
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            setHoveredHiddenId('hidden_mumu_dog');
+          }}
+          onPointerOut={() => setHoveredHiddenId(null)}
+        >
+          {/* Generous invisible touch/click collider */}
+          <mesh position={[0, 0.14, 0]} visible={false}>
+            <boxGeometry args={[0.38, 0.38, 0.38]} />
+          </mesh>
+          {/* Fluffy Charcoal-Black Puppy Body */}
+          <mesh position={[0, 0.09, -0.02]} castShadow>
+            <sphereGeometry args={[0.095, 14, 14]} />
+            <meshStandardMaterial color="#1c1917" roughness={0.85} />
+          </mesh>
+          {/* Fluffy Round Black Head */}
+          <mesh position={[0, 0.2, 0.03]} castShadow>
+            <sphereGeometry args={[0.088, 16, 16]} />
+            <meshStandardMaterial color="#18181b" roughness={0.85} />
+          </mesh>
+          {/* Cute Floppy Black Ears (Left & Right) */}
+          <mesh position={[-0.085, 0.19, 0.02]} rotation={[0, 0, 0.25]} castShadow>
+            <boxGeometry args={[0.035, 0.11, 0.065]} />
+            <meshStandardMaterial color="#09090b" roughness={0.9} />
+          </mesh>
+          <mesh position={[0.085, 0.19, 0.02]} rotation={[0, 0, -0.25]} castShadow>
+            <boxGeometry args={[0.035, 0.11, 0.065]} />
+            <meshStandardMaterial color="#09090b" roughness={0.9} />
+          </mesh>
+          {/* Red Collar & Gold Bell around Mumu's Neck */}
+          <mesh position={[0, 0.135, 0.025]} rotation={[0.15, 0, 0]}>
+            <cylinderGeometry args={[0.068, 0.072, 0.022, 14]} />
+            <meshStandardMaterial color="#dc2626" roughness={0.5} />
+          </mesh>
+          <mesh position={[0, 0.125, 0.092]}>
+            <sphereGeometry args={[0.018, 10, 10]} />
+            <meshStandardMaterial color="#facc15" metalness={0.8} roughness={0.2} />
+          </mesh>
+          {/* Shiny Eyes with White Catchlights */}
+          <mesh position={[-0.032, 0.215, 0.108]}>
+            <sphereGeometry args={[0.014, 8, 8]} />
+            <meshBasicMaterial color="#ffffff" />
+          </mesh>
+          <mesh position={[0.032, 0.215, 0.108]}>
+            <sphereGeometry args={[0.014, 8, 8]} />
+            <meshBasicMaterial color="#ffffff" />
+          </mesh>
+          <mesh position={[-0.032, 0.215, 0.116]}>
+            <sphereGeometry args={[0.009, 8, 8]} />
+            <meshBasicMaterial color="#09090b" />
+          </mesh>
+          <mesh position={[0.032, 0.215, 0.116]}>
+            <sphereGeometry args={[0.009, 8, 8]} />
+            <meshBasicMaterial color="#09090b" />
+          </mesh>
+          {/* Black Button Nose & Cute Pink Tongue Sticking Out (Just like '무무를 찾아라!') */}
+          <mesh position={[0, 0.195, 0.118]}>
+            <sphereGeometry args={[0.016, 10, 10]} />
+            <meshStandardMaterial color="#09090b" roughness={0.3} />
+          </mesh>
+          <mesh position={[0, 0.168, 0.112]} rotation={[0.3, 0, 0]}>
+            <boxGeometry args={[0.026, 0.032, 0.01]} />
+            <meshBasicMaterial color="#fb7185" />
+          </mesh>
+          {(hoveredHiddenId === 'hidden_mumu_dog' ||
+            collectedStampIds.includes('hidden_mumu_dog')) && (
+            <Html position={[0, 0.36, 0]} center zIndexRange={[6, 0]}>
+              <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#c85a28] px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg ring-1 ring-[#fde68a]">
+                {collectedStampIds.includes('hidden_mumu_dog')
+                  ? '🐶 까만 강아지 무무 ✓'
+                  : '🔍 [터치] 숨은 무무 발견!'}
+              </div>
+            </Html>
+          )}
+        </group>
       </group>
 
       {/* ============================================================
@@ -1711,11 +1851,83 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
             <boxGeometry args={[0.68, 3.45, 0.92]} />
             <meshStandardMaterial color="#59351c" roughness={0.75} />
           </mesh>
-          {/* Small Framed Butterfly/Botanical Artworks on the Pillar (113955_01.jpg) */}
-          <mesh position={[-0.35, 0.12, -0.18]}>
-            <boxGeometry args={[0.03, 0.34, 0.32]} />
-            <meshStandardMaterial color="#27272a" />
-          </mesh>
+          {/* HIDDEN OBJECT #3 (`hidden_butterfly_frame`): Framed Blue Butterfly Artwork on Pillar */}
+          <group
+            position={[-0.35, 0.12, -0.18]}
+            onClick={(e) => {
+              e.stopPropagation();
+              onFindHiddenStamp('hidden_butterfly_frame');
+            }}
+            onPointerOver={(e) => {
+              e.stopPropagation();
+              setHoveredHiddenId('hidden_butterfly_frame');
+            }}
+            onPointerOut={() => setHoveredHiddenId(null)}
+          >
+            {/* Generous invisible touch/click collider */}
+            <mesh visible={false}>
+              <boxGeometry args={[0.22, 0.45, 0.45]} />
+            </mesh>
+            {/* Dark Frame & Cream Matte Backing */}
+            <mesh>
+              <boxGeometry args={[0.035, 0.34, 0.32]} />
+              <meshStandardMaterial
+                color={
+                  hoveredHiddenId === 'hidden_butterfly_frame'
+                    ? '#d97706'
+                    : '#27272a'
+                }
+              />
+            </mesh>
+            <mesh position={[-0.019, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+              <planeGeometry args={[0.26, 0.28]} />
+              <meshBasicMaterial color="#fef3c7" />
+            </mesh>
+            {/* Vivid Blue Butterfly Wings inside Frame */}
+            <mesh
+              position={[-0.021, 0.01, -0.042]}
+              rotation={[0.2, -Math.PI / 2, 0]}
+            >
+              <circleGeometry args={[0.055, 12]} />
+              <meshBasicMaterial color="#0ea5e9" />
+            </mesh>
+            <mesh
+              position={[-0.021, 0.01, 0.042]}
+              rotation={[-0.2, -Math.PI / 2, 0]}
+            >
+              <circleGeometry args={[0.055, 12]} />
+              <meshBasicMaterial color="#0ea5e9" />
+            </mesh>
+            <mesh
+              position={[-0.021, -0.035, -0.028]}
+              rotation={[0, -Math.PI / 2, 0]}
+            >
+              <circleGeometry args={[0.036, 10]} />
+              <meshBasicMaterial color="#38bdf8" />
+            </mesh>
+            <mesh
+              position={[-0.021, -0.035, 0.028]}
+              rotation={[0, -Math.PI / 2, 0]}
+            >
+              <circleGeometry args={[0.036, 10]} />
+              <meshBasicMaterial color="#38bdf8" />
+            </mesh>
+            {/* Butterfly Body */}
+            <mesh position={[-0.022, -0.01, 0]}>
+              <boxGeometry args={[0.004, 0.09, 0.012]} />
+              <meshBasicMaterial color="#18181b" />
+            </mesh>
+            {(hoveredHiddenId === 'hidden_butterfly_frame' ||
+              collectedStampIds.includes('hidden_butterfly_frame')) && (
+              <Html position={[-0.12, 0.25, 0]} center zIndexRange={[6, 0]}>
+                <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#c85a28] px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg ring-1 ring-[#fde68a]">
+                  {collectedStampIds.includes('hidden_butterfly_frame')
+                    ? '🦋 파란 나비 액자 ✓'
+                    : '🔍 [터치] 파란 나비 액자 발견!'}
+                </div>
+              </Html>
+            )}
+          </group>
           <mesh position={[-0.35, 0.1, 0.18]}>
             <boxGeometry args={[0.02, 0.38, 0.26]} />
             <meshStandardMaterial color="#fef3c7" />
@@ -2047,6 +2259,34 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
               <boxGeometry args={[0.212, 0.055, 0.004]} />
               <meshStandardMaterial color={book.accentColor} />
             </mesh>
+            {/* HIDDEN OBJECT #1 (`hidden_book_dokja`): Protruding Golden Bookmark Ribbon & Star Charm on 『작지만, 독자』 */}
+            {book.id === 'book_small_but_dokja' && (
+              <group
+                position={[0, 0.175, 0.015]}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFindHiddenStamp('hidden_book_dokja');
+                  onSelectBook(book);
+                }}
+              >
+                {/* Red/Gold Bookmark Ribbon Sticking Out of Top */}
+                <mesh position={[0, -0.015, 0]}>
+                  <boxGeometry args={[0.028, 0.06, 0.008]} />
+                  <meshBasicMaterial color="#dc2626" />
+                </mesh>
+                {/* Golden Star/Coin Charm on Top of Bookmark */}
+                <mesh position={[0, 0.025, 0]}>
+                  <octahedronGeometry args={[0.032, 0]} />
+                  <meshStandardMaterial
+                    color="#facc15"
+                    emissive="#eab308"
+                    emissiveIntensity={0.55}
+                    metalness={0.8}
+                    roughness={0.2}
+                  />
+                </mesh>
+              </group>
+            )}
             {(isHovered || nearbyBookId === book.id) && (
               <Html position={[0, 0.25, 0.05]} center zIndexRange={[6, 0]}>
                 <div
@@ -2069,6 +2309,58 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           </group>
         );
       })}
+
+      {/* Also place a Dedicated Hidden Golden-Star-Bookmark Book on the Right Main Bookcase (`[4.12, 1.28, 2.92]`) so searching either bookshelf finds #1! */}
+      <group
+        position={[4.12, 1.28, 2.92]}
+        rotation={[0, -Math.PI / 2, 0]}
+        onClick={(e) => {
+          e.stopPropagation();
+          onFindHiddenStamp('hidden_book_dokja');
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          setHoveredHiddenId('hidden_book_dokja');
+        }}
+        onPointerOut={() => setHoveredHiddenId(null)}
+      >
+        <mesh visible={false}>
+          <boxGeometry args={[0.36, 0.42, 0.25]} />
+        </mesh>
+        <mesh castShadow>
+          <boxGeometry args={[0.21, 0.28, 0.046]} />
+          <meshStandardMaterial color="#c85a28" roughness={0.45} />
+        </mesh>
+        <mesh position={[0, -0.04, 0.025]}>
+          <boxGeometry args={[0.212, 0.055, 0.004]} />
+          <meshBasicMaterial color="#fde68a" />
+        </mesh>
+        {/* Protruding Red Ribbon & Gold Star Charm */}
+        <mesh position={[0, 0.16, 0.01]}>
+          <boxGeometry args={[0.028, 0.06, 0.008]} />
+          <meshBasicMaterial color="#dc2626" />
+        </mesh>
+        <mesh position={[0, 0.2, 0.01]}>
+          <octahedronGeometry args={[0.034, 0]} />
+          <meshStandardMaterial
+            color="#facc15"
+            emissive="#eab308"
+            emissiveIntensity={0.6}
+            metalness={0.8}
+            roughness={0.2}
+          />
+        </mesh>
+        {(hoveredHiddenId === 'hidden_book_dokja' ||
+          collectedStampIds.includes('hidden_book_dokja')) && (
+          <Html position={[0, 0.3, 0.06]} center zIndexRange={[6, 0]}>
+            <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#c85a28] px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg ring-1 ring-[#fde68a]">
+              {collectedStampIds.includes('hidden_book_dokja')
+                ? '📕 황금 별 책갈피 책 ✓'
+                : '🔍 [터치] 황금 별 책갈피 책 발견!'}
+            </div>
+          </Html>
+        )}
+      </group>
 
       {/* ============================================================
           11. RIGHT-WALL ATTACHED RECOMMENDATION TABLE & LEATHER MACHINE
@@ -2615,8 +2907,24 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
                   <meshStandardMaterial color="#d4af37" metalness={0.85} roughness={0.2} />
                 </mesh>
 
-                {/* Cute White Duck Figurine #1 (Wearing a Yellow Hat!) inside Tray */}
-                <group position={[-0.06, 0.025, 0.04]} rotation={[0, 0.25, 0]}>
+                {/* HIDDEN OBJECT #4 (`hidden_hat_duck`): Cute White Duck Figurine #1 (Wearing a Yellow Hat!) inside Tray */}
+                <group
+                  position={[-0.06, 0.025, 0.04]}
+                  rotation={[0, 0.25, 0]}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFindHiddenStamp('hidden_hat_duck');
+                  }}
+                  onPointerOver={(e) => {
+                    e.stopPropagation();
+                    setHoveredHiddenId('hidden_hat_duck');
+                  }}
+                  onPointerOut={() => setHoveredHiddenId(null)}
+                >
+                  {/* Generous invisible touch/click collider */}
+                  <mesh position={[0, 0.06, 0]} visible={false}>
+                    <boxGeometry args={[0.24, 0.24, 0.24]} />
+                  </mesh>
                   {/* Plump White Body & Head */}
                   <mesh position={[0, 0.038, 0]} castShadow>
                     <sphereGeometry args={[0.042, 12, 12]} />
@@ -2634,11 +2942,29 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
                     <coneGeometry args={[0.012, 0.026, 8]} />
                     <meshStandardMaterial color="#ea580c" />
                   </mesh>
-                  {/* Yellow Hat on Duck's Head! */}
-                  <mesh position={[0, 0.108, 0.01]}>
-                    <cylinderGeometry args={[0.026, 0.032, 0.018, 12]} />
-                    <meshStandardMaterial color="#facc15" roughness={0.5} />
+                  {/* Bright Yellow Sun-Hat with Red Band on Duck's Head! */}
+                  <mesh position={[0, 0.106, 0.01]}>
+                    <cylinderGeometry args={[0.036, 0.036, 0.006, 14]} />
+                    <meshStandardMaterial color="#facc15" roughness={0.4} />
                   </mesh>
+                  <mesh position={[0, 0.118, 0.01]}>
+                    <cylinderGeometry args={[0.022, 0.025, 0.02, 12]} />
+                    <meshStandardMaterial color="#facc15" roughness={0.4} />
+                  </mesh>
+                  <mesh position={[0, 0.11, 0.01]}>
+                    <cylinderGeometry args={[0.025, 0.026, 0.005, 12]} />
+                    <meshBasicMaterial color="#dc2626" />
+                  </mesh>
+                  {(hoveredHiddenId === 'hidden_hat_duck' ||
+                    collectedStampIds.includes('hidden_hat_duck')) && (
+                    <Html position={[0, 0.22, 0]} center zIndexRange={[6, 0]}>
+                      <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#c85a28] px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg ring-1 ring-[#fde68a]">
+                        {collectedStampIds.includes('hidden_hat_duck')
+                          ? '🦆 노란 모자 오리 ✓'
+                          : '🔍 [터치] 노란 모자 오리 발견!'}
+                      </div>
+                    </Html>
+                  )}
                 </group>
 
                 {/* Cute White Duck Figurine #2 inside Tray */}
