@@ -336,18 +336,20 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
             </button>
           </div>
 
-          {/* Single Music On/Off Icon Button (Web Audio Jazz Piano & Music Box BGM) */}
+          {/* Single Unified Sound On/Off Button (Jazz Piano BGM + Bookstore ASMR together) */}
           <button
             type="button"
             data-testid="bgm-toggle-btn"
             onClick={onToggleBgm}
             title={
               bgmPlaying
-                ? '배경음악 끄기 (재즈 피아노 & 오르골 선율 재생 중)'
-                : '배경음악 켜기 (재즈 피아노 & 오르골 선율)'
+                ? '배경음악 & ASMR 한 번에 끄기 (재즈 피아노·빗소리·책장·모닥불 재생 중)'
+                : '배경음악 & ASMR 한 번에 켜기 (재즈 피아노·빗소리·책장·모닥불)'
             }
-            aria-label={bgmPlaying ? '배경음악 끄기' : '배경음악 켜기'}
-            className={`flex h-6 w-6 items-center justify-center rounded-full transition ${
+            aria-label={
+              bgmPlaying ? '배경음악 및 ASMR 끄기' : '배경음악 및 ASMR 켜기'
+            }
+            className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold transition ${
               bgmPlaying
                 ? 'bg-[#c85a28] text-white shadow-sm ring-1 ring-[#fde68a]/60'
                 : 'bg-[#2a201b] text-[#cbbba8] hover:bg-[#3a2d26] hover:text-white'
@@ -358,16 +360,19 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
             ) : (
               <VolumeX className="h-3.5 w-3.5" />
             )}
+            <span className="hidden md:inline">
+              {bgmPlaying ? '사운드 ON' : '사운드 OFF'}
+            </span>
           </button>
 
-          {/* Feature #2: Reading Focus Timer & Bookstore ASMR Station Button */}
+          {/* Feature #2: Reading Focus Timer Button */}
           <button
             type="button"
             data-testid="timer-asmr-btn"
             onClick={() => setShowTimerAsmrModal(true)}
-            title="창가 독서 타이머 & 서점 ASMR 모드 (빗소리·책장·모닥불)"
+            title="창가 독서 집중 타이머"
             className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium transition ${
-              timerRunning || hasActiveAsmr
+              timerRunning
                 ? 'bg-amber-600 text-white shadow-sm ring-1 ring-[#fde68a]'
                 : 'bg-[#2a201b] text-[#fde68a] hover:bg-[#c85a28] hover:text-white'
             }`}
@@ -378,7 +383,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                 {formatTimer(timerRemainingSec)}
               </span>
             ) : (
-              <span className="hidden md:inline">독서·ASMR</span>
+              <span className="hidden md:inline">독서 타이머</span>
             )}
           </button>
 
@@ -1392,155 +1397,55 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               </div>
             </div>
 
-            {/* 2. Bookstore ASMR Sound Mixer */}
+            {/* 2. Single Unified Button for Bookstore BGM + ASMR */}
             <div className="mt-4 rounded-2xl bg-[#241c17] p-4 border border-[#3d2f28]">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <span className="text-xs font-semibold text-[#fde68a]">
-                  🎧 서점 공간 사운드 & ASMR 믹서
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    data-testid="asmr-cozy-preset-btn"
-                    onClick={() => {
-                      if (!bgmPlaying) onToggleBgm();
-                      onChangeAsmrLevels({
-                        rain: 0.65,
-                        paper: 0.5,
-                        fireplace: 0.4,
-                      });
-                    }}
-                    className="rounded-full bg-amber-600/25 border border-amber-500/40 px-2.5 py-1 text-[11px] font-semibold text-[#fde68a] hover:bg-amber-600 hover:text-white transition"
-                  >
-                    ✨ 비 오는 밤의 책방 프리셋 켜기
-                  </button>
-                  {hasActiveAsmr && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onChangeAsmrLevels({ rain: 0, paper: 0, fireplace: 0 })
-                      }
-                      className="rounded-full bg-[#191310] px-2.5 py-1 text-[11px] text-[#cbbba8] hover:text-white transition"
-                    >
-                      ASMR 모두 끄기
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {/* Channel 1: Jazz Piano & Music Box BGM */}
-                <div className="flex items-center justify-between rounded-xl bg-[#191310] px-3.5 py-2.5 border border-[#332721]">
-                  <div className="flex items-center gap-2.5">
-                    <Volume2 className="h-4 w-4 text-[#e09f3e]" />
-                    <div>
-                      <div className="text-xs font-semibold text-[#f8f1e5]">
-                        서점 감성 재즈 피아노 & 오르골 선율
-                      </div>
-                      <div className="text-[10px] text-[#a89888]">
-                        출입문 입장과 연동되는 따뜻한 펠트 피아노 배경음악
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={onToggleBgm}
-                    className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition ${
                       bgmPlaying
-                        ? 'bg-[#c85a28] text-white'
-                        : 'bg-[#2a201b] text-[#cbbba8]'
+                        ? 'bg-[#c85a28] text-white shadow-md ring-2 ring-[#fde68a]/50'
+                        : 'bg-[#191310] text-[#8d7d6e] border border-[#332721]'
                     }`}
                   >
-                    {bgmPlaying ? '켜짐' : '꺼짐'}
-                  </button>
+                    {bgmPlaying ? (
+                      <Volume2 className="h-5 w-5" />
+                    ) : (
+                      <VolumeX className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-[#f8f1e5]">
+                      서점 배경음악 & ASMR 통합 사운드
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-[#b8a99a]">
+                      재즈 피아노·오르골 선율과 창밖 빗소리·책장 넘김·모닥불 ASMR을 버튼 하나로 동시에 켜고 끕니다.
+                    </p>
+                  </div>
                 </div>
 
-                {/* Channel 2: Window Rain ASMR */}
-                <div className="rounded-xl bg-[#191310] px-3.5 py-2.5 border border-[#332721]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CloudRain className="h-4 w-4 text-sky-400" />
-                      <span className="text-xs font-semibold text-[#f8f1e5]">
-                        창밖 레이스 커튼 너머 잔잔한 빗소리
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-mono text-sky-300">
-                      {Math.round(asmrLevels.rain * 100)}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={asmrLevels.rain}
-                    onChange={(e) =>
-                      onChangeAsmrLevels({
-                        ...asmrLevels,
-                        rain: parseFloat(e.target.value),
-                      })
-                    }
-                    className="mt-2 h-1.5 w-full cursor-pointer accent-sky-400"
-                  />
-                </div>
-
-                {/* Channel 3: Paper Page Turn & Pencil Rustle */}
-                <div className="rounded-xl bg-[#191310] px-3.5 py-2.5 border border-[#332721]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="h-4 w-4 text-amber-300" />
-                      <span className="text-xs font-semibold text-[#f8f1e5]">
-                        종이 책장 넘기는 소리 & 연필 사각거림
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-mono text-amber-300">
-                      {Math.round(asmrLevels.paper * 100)}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={asmrLevels.paper}
-                    onChange={(e) =>
-                      onChangeAsmrLevels({
-                        ...asmrLevels,
-                        paper: parseFloat(e.target.value),
-                      })
-                    }
-                    className="mt-2 h-1.5 w-full cursor-pointer accent-amber-400"
-                  />
-                </div>
-
-                {/* Channel 4: Warm Fireplace / Analog LP Crackle */}
-                <div className="rounded-xl bg-[#191310] px-3.5 py-2.5 border border-[#332721]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Flame className="h-4 w-4 text-orange-400" />
-                      <span className="text-xs font-semibold text-[#f8f1e5]">
-                        모닥불 타닥거림 & 아날로그 LP 온기
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-mono text-orange-300">
-                      {Math.round(asmrLevels.fireplace * 100)}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={asmrLevels.fireplace}
-                    onChange={(e) =>
-                      onChangeAsmrLevels({
-                        ...asmrLevels,
-                        fireplace: parseFloat(e.target.value),
-                      })
-                    }
-                    className="mt-2 h-1.5 w-full cursor-pointer accent-orange-400"
-                  />
-                </div>
+                <button
+                  type="button"
+                  data-testid="unified-sound-toggle-btn"
+                  onClick={onToggleBgm}
+                  className={`shrink-0 flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-bold transition shadow-lg ${
+                    bgmPlaying
+                      ? 'bg-[#c85a28] text-white ring-1 ring-[#fde68a]/60 hover:bg-[#b04c1f]'
+                      : 'bg-[#191310] text-[#fde68a] border border-[#d4af37]/40 hover:bg-[#c85a28] hover:text-white'
+                  }`}
+                >
+                  {bgmPlaying ? (
+                    <>
+                      <Volume2 className="h-4 w-4" />
+                      <span>사운드 켜짐 (한 번에 끄기)</span>
+                    </>
+                  ) : (
+                    <>
+                      <VolumeX className="h-4 w-4" />
+                      <span>사운드 꺼짐 (한 번에 켜기)</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 

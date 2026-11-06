@@ -275,6 +275,13 @@ class BookstoreBgmEngine {
     this.masterGain.gain.setTargetAtTime(0.45, now, 0.45);
     this.applySpatialState(false);
 
+    // Unified 1-button control: turn on cozy Bookstore ASMR ambience together with BGM
+    this.setAsmrLevels({
+      rain: 0.45,
+      paper: 0.4,
+      fireplace: 0.32,
+    });
+
     if (this.timerId === null) {
       this.scheduleNextBar();
     }
@@ -287,10 +294,16 @@ class BookstoreBgmEngine {
       window.clearTimeout(this.timerId);
       this.timerId = null;
     }
+    // Unified 1-button control: silence all ASMR channels together with BGM
+    this.setAsmrLevels({
+      rain: 0,
+      paper: 0,
+      fireplace: 0,
+    });
     if (this.ctx && this.masterGain) {
       const now = this.ctx.currentTime;
       this.masterGain.gain.cancelScheduledValues(now);
-      this.masterGain.gain.setTargetAtTime(0.0001, now, 0.25);
+      this.masterGain.gain.setTargetAtTime(0.0001, now, 0.2);
     }
   }
 
@@ -588,7 +601,9 @@ class BookstoreBgmEngine {
       this.rainSource.loop = true;
       this.rainSource.connect(rainFilter);
       rainFilter.connect(this.rainGain);
-      this.rainGain.connect(ctx.destination);
+      this.rainGain.connect(
+        this.spatialFilter ?? this.masterGain ?? ctx.destination
+      );
       this.rainSource.start();
     }
 
@@ -625,7 +640,9 @@ class BookstoreBgmEngine {
       this.fireSource.loop = true;
       this.fireSource.connect(fireFilter);
       fireFilter.connect(this.fireGain);
-      this.fireGain.connect(ctx.destination);
+      this.fireGain.connect(
+        this.spatialFilter ?? this.masterGain ?? ctx.destination
+      );
       this.fireSource.start();
     }
   }
@@ -669,7 +686,7 @@ class BookstoreBgmEngine {
   }
 
   private schedulePaperRustle() {
-    if (this.asmrLevels.paper <= 0.02 || !this.ctx) {
+    if (!this.isEnabled || this.asmrLevels.paper <= 0.02 || !this.ctx) {
       this.paperTimerId = null;
       return;
     }
@@ -684,7 +701,7 @@ class BookstoreBgmEngine {
 
   // Synthesize a realistic soft book page turn / pencil sketch whisper
   private playPaperTurnSound(level: number) {
-    if (!this.ctx) return;
+    if (!this.ctx || !this.isEnabled) return;
     const ctx = this.ctx;
     const dur = 0.42;
     const len = Math.floor(ctx.sampleRate * dur);
@@ -711,7 +728,7 @@ class BookstoreBgmEngine {
 
     src.connect(filter);
     filter.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(this.spatialFilter ?? this.masterGain ?? ctx.destination);
     src.start();
   }
 

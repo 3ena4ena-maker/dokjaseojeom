@@ -92,13 +92,14 @@ export function App() {
     bookstoreBgm.setCharacterZ(characterPos[2]);
   }, [characterPos]);
 
-  // Auto-start soft road BGM on first user gesture (unless explicitly muted via the music icon)
+  // Auto-start soft road BGM + ASMR on first user gesture (unless explicitly muted via the sound icon)
   useEffect(() => {
     const unlockAudioOnFirstGesture = () => {
       if (!userMutedBgmRef.current && !bookstoreBgm.getIsEnabled()) {
         const started = bookstoreBgm.start();
         if (started) {
           setBgmPlaying(true);
+          setAsmrLevels(bookstoreBgm.getAsmrLevels());
         }
       }
     };
@@ -118,6 +119,12 @@ export function App() {
     const nextPlaying = bookstoreBgm.toggle();
     userMutedBgmRef.current = !nextPlaying;
     setBgmPlaying(nextPlaying);
+    setAsmrLevels(bookstoreBgm.getAsmrLevels());
+    setToastMessage(
+      nextPlaying
+        ? '🔊 서점 배경음악 & ASMR(빗소리·책장·모닥불)을 함께 켰습니다.'
+        : '🔇 서점 배경음악 & ASMR을 모두 껐습니다.'
+    );
   }, []);
 
   // Visual path indicators on the floor
