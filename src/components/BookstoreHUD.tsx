@@ -238,7 +238,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-[#cbbba8]">
-                휠·슬라이더로 <span className="text-[#fde68a]">공간 확대/축소(0.8m~10.5m)</span>하며 방향키·클릭 이동
+                휠·슬라이더로 <span className="text-[#fde68a]">실내 공간 확대/축소(0.9m~4.2m)</span>하며 방향키·클릭 이동
               </p>
             </div>
           </div>
@@ -276,7 +276,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               <button
                 type="button"
                 data-testid="zoom-in-btn"
-                onClick={() => onZoomCamera(-0.65)}
+                onClick={() => onZoomCamera(-0.45)}
                 title="공간 확대 (가까이 보기)"
                 className="flex h-6 w-6 items-center justify-center rounded-lg text-[#fde68a] hover:bg-[#c85a28] hover:text-white transition"
               >
@@ -285,8 +285,8 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               <input
                 type="range"
                 data-testid="zoom-slider"
-                min={0.85}
-                max={10.5}
+                min={0.9}
+                max={4.2}
                 step={0.1}
                 value={cameraDistance}
                 onChange={(e) => onSetCameraDistance(parseFloat(e.target.value))}
@@ -296,8 +296,8 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               <button
                 type="button"
                 data-testid="zoom-out-btn"
-                onClick={() => onZoomCamera(0.65)}
-                title="공간 축소 (넓게 보기)"
+                onClick={() => onZoomCamera(0.45)}
+                title="공간 축소 (실내 넓게 보기)"
                 className="flex h-6 w-6 items-center justify-center rounded-lg text-[#fde68a] hover:bg-[#c85a28] hover:text-white transition"
               >
                 <ZoomOut className="h-3.5 w-3.5" />

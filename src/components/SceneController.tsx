@@ -218,10 +218,10 @@ export const SceneController: React.FC<SceneControllerProps> = ({
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      // Gentler wheel zoom speed
+      // Gentler wheel zoom speed, strictly capped at 4.2m so zoom-out stays inside the bookstore
       const nextDist = Math.max(
-        0.85,
-        Math.min(10.5, cameraDistanceRef.current + e.deltaY * 0.0016)
+        0.9,
+        Math.min(4.2, cameraDistanceRef.current + e.deltaY * 0.0014)
       );
       cameraDistanceRef.current = nextDist;
       onSyncCameraDistance(nextDist);
@@ -479,7 +479,7 @@ export const SceneController: React.FC<SceneControllerProps> = ({
     }
 
     const lookTargetY = charY + (isSeated ? 0.96 : 1.24);
-    const camDist = cameraDistanceRef.current;
+    const camDist = Math.max(0.9, Math.min(4.2, cameraDistanceRef.current));
     const pitch = cameraPitchRef.current;
     const yaw = cameraYawRef.current;
 
@@ -500,6 +500,17 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       camDist
     );
 
+    // Smoothly widen indoor FOV (50 deg -> 72 deg) as user zooms out up to 4.2m inside the store
+    // so zooming out shows the entire interior without the camera ever leaving the room walls
+    if (camera instanceof THREE.PerspectiveCamera) {
+      const zoomRatio = (camDist - 0.9) / (4.2 - 0.9);
+      const targetFov = charZ <= 6.35 ? 50 + zoomRatio * 22 : 56;
+      if (Math.abs(camera.fov - targetFov) > 0.05) {
+        camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6.0);
+        camera.updateProjectionMatrix();
+      }
+    }
+
     // Soft, cushioned camera position damping
     const camLerp = Math.min(1, dt * 4.8);
     smoothCamPosRef.current.lerp(
@@ -508,11 +519,10 @@ export const SceneController: React.FC<SceneControllerProps> = ({
     );
 
     // Use the camera's own smooth viewing direction for a subtle forward look-ahead
-    // so character turns don't whip the lookAt target sideways
     const viewFwdX = -Math.sin(yaw);
     const viewFwdZ = -Math.cos(yaw);
     const lookAheadDist =
-      charZ > 3.2 && charZ <= 6.3 && Math.abs(yaw) < 0.7 ? 0.85 : 0.42;
+      charZ > 3.2 && charZ <= 6.35 && Math.abs(yaw) < 0.7 ? 0.95 : 0.45;
 
     const lookTargetX = charX + viewFwdX * lookAheadDist;
     const lookTargetZ = charZ + viewFwdZ * lookAheadDist;

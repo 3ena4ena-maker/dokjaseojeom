@@ -273,7 +273,7 @@ export function findNavigationPath(
   return smoothed;
 }
 
-// Camera position computation supporting free zoom-in / zoom-out and smooth outdoor->indoor transition
+// Camera position computation: once inside the bookstore (Z <= 6.35), strictly keep camera inside the interior walls
 export function computeSafeCameraPosition(
   targetX: number,
   targetY: number,
@@ -281,23 +281,25 @@ export function computeSafeCameraPosition(
   desiredCamX: number,
   desiredCamY: number,
   desiredCamZ: number,
-  cameraDistance: number
+  _cameraDistance: number
 ): [number, number, number] {
-  const isCharacterOutside = targetZ > 6.55;
+  const isCharacterOutside = targetZ > 6.35;
 
-  // When zoomed out wide (> 4.8m) or when outside on the road, allow free wide-angle camera positioning!
-  if (isCharacterOutside || cameraDistance > 4.8) {
-    const clampedY = Math.max(0.45, Math.min(8.5, desiredCamY));
-    return [desiredCamX, clampedY, desiredCamZ];
+  // Only allow outdoor camera coordinates before the character enters the bookstore entrance
+  if (isCharacterOutside) {
+    const clampedX = Math.max(-4.8, Math.min(4.8, desiredCamX));
+    const clampedY = Math.max(0.55, Math.min(4.2, desiredCamY));
+    const clampedZ = Math.max(6.45, Math.min(12.2, desiredCamZ));
+    return [clampedX, clampedY, clampedZ];
   }
 
-  // Inside the bookstore at normal/close zoom: keep camera inside the room walls so walls don't block the view
-  const roomMinX = -4.18;
-  const roomMaxX = 3.85;
-  const roomMinZ = -6.25;
-  const roomMaxZ = 6.22; // Just inside the glass storefront wall so the entire interior is visible!
-  const roomMaxY = 3.25;
-  const roomMinY = 0.45;
+  // Once inside the entrance (targetZ <= 6.35), NEVER allow the camera to exit through any wall or the entrance door
+  const roomMinX = -4.12;
+  const roomMaxX = 3.82;
+  const roomMinZ = -6.15;
+  const roomMaxZ = 6.12; // Strictly inside the entrance door & storefront wall
+  const roomMaxY = 3.15; // Strictly below the terracotta ceiling
+  const roomMinY = 0.55;
 
   const finalX = Math.max(roomMinX, Math.min(roomMaxX, desiredCamX));
   const finalY = Math.max(roomMinY, Math.min(roomMaxY, desiredCamY));

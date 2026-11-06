@@ -508,15 +508,15 @@ export function App() {
 
   const handleZoomCamera = useCallback((delta: number) => {
     const next = Math.max(
-      0.85,
-      Math.min(10.5, cameraDistanceRef.current + delta)
+      0.9,
+      Math.min(4.2, cameraDistanceRef.current + delta)
     );
     cameraDistanceRef.current = next;
     setCameraDistance(next);
   }, []);
 
   const handleSetCameraDistance = useCallback((dist: number) => {
-    const next = Math.max(0.85, Math.min(10.5, dist));
+    const next = Math.max(0.9, Math.min(4.2, dist));
     cameraDistanceRef.current = next;
     setCameraDistance(next);
   }, []);
