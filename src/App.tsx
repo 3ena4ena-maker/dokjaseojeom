@@ -16,6 +16,7 @@ import {
   WaypointNode,
 } from './types';
 import { findNavigationPath } from './systems/collisionAndNav';
+import { bookstoreBgm } from './systems/bookstoreBgm';
 import { Character3D } from './components/Character3D';
 import { BookstoreEnvironment3D } from './components/BookstoreEnvironment3D';
 import { SceneController } from './components/SceneController';
@@ -65,9 +66,44 @@ export function App() {
     Record<string, BookItem | null>
   >({});
   const [windowLampOn, setWindowLampOn] = useState<boolean>(true);
+  const [bgmPlaying, setBgmPlaying] = useState<boolean>(false);
+  const userMutedBgmRef = useRef<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(
     '독자서점 외부 도로에 도착했습니다. 계단과 열린 출입문을 통해 서점 안으로 걸어 들어가 보세요!'
   );
+
+  // Sync character Z coordinate to spatial BGM engine (soft/muffled on road -> warm fade-in inside store)
+  useEffect(() => {
+    bookstoreBgm.setCharacterZ(characterPos[2]);
+  }, [characterPos]);
+
+  // Auto-start soft road BGM on first user gesture (unless explicitly muted via the music icon)
+  useEffect(() => {
+    const unlockAudioOnFirstGesture = () => {
+      if (!userMutedBgmRef.current && !bookstoreBgm.getIsEnabled()) {
+        const started = bookstoreBgm.start();
+        if (started) {
+          setBgmPlaying(true);
+        }
+      }
+    };
+    window.addEventListener('pointerdown', unlockAudioOnFirstGesture, {
+      passive: true,
+    });
+    window.addEventListener('keydown', unlockAudioOnFirstGesture, {
+      passive: true,
+    });
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudioOnFirstGesture);
+      window.removeEventListener('keydown', unlockAudioOnFirstGesture);
+    };
+  }, []);
+
+  const handleToggleBgm = useCallback(() => {
+    const nextPlaying = bookstoreBgm.toggle();
+    userMutedBgmRef.current = !nextPlaying;
+    setBgmPlaying(nextPlaying);
+  }, []);
 
   // Visual path indicators on the floor
   const [navTarget, setNavTarget] = useState<[number, number] | null>(null);
@@ -156,8 +192,9 @@ export function App() {
     cameraPitchRef.current = 0.28;
     cameraDistanceRef.current = 3.1;
     setCameraDistance(3.1);
+    bookstoreBgm.triggerEnterStoreSwell();
     showToast(
-      '✨ 독자서점 내부로 들어왔습니다! 크리스탈 샹들리에와 벽면 추천 테이블, 안쪽 서가까지 한눈에 펼쳐집니다.'
+      '✨ 독자서점 내부로 들어왔습니다! 잔잔한 재즈 피아노 선율과 함께 서점 공간이 한눈에 펼쳐집니다.'
     );
   }, [showToast]);
 
@@ -644,6 +681,8 @@ export function App() {
         onResetCamera={handleResetCamera}
         onSetPanoramicInteriorView={handleSetPanoramicInteriorView}
         onEnterStoreFromRoad={handleEnterStoreFromRoad}
+        bgmPlaying={bgmPlaying}
+        onToggleBgm={handleToggleBgm}
       />
     </div>
   );

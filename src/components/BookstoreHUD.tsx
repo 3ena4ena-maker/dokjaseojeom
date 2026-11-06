@@ -11,6 +11,8 @@ import {
   Maximize2,
   RotateCcw,
   UserCheck,
+  Volume2,
+  VolumeX,
   X,
   ZoomIn,
   ZoomOut,
@@ -81,6 +83,8 @@ interface BookstoreHUDProps {
   onResetCamera: () => void;
   onSetPanoramicInteriorView: () => void;
   onEnterStoreFromRoad: () => void;
+  bgmPlaying: boolean;
+  onToggleBgm: () => void;
 }
 
 export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
@@ -121,6 +125,8 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
   onResetCamera,
   onSetPanoramicInteriorView,
   onEnterStoreFromRoad,
+  bgmPlaying,
+  onToggleBgm,
 }) => {
   const [showMinimap, setShowMinimap] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
@@ -264,6 +270,30 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               <RotateCcw className="h-3 w-3" />
             </button>
           </div>
+
+          {/* Single Music On/Off Icon Button (Web Audio Jazz Piano & Music Box BGM) */}
+          <button
+            type="button"
+            data-testid="bgm-toggle-btn"
+            onClick={onToggleBgm}
+            title={
+              bgmPlaying
+                ? '배경음악 끄기 (재즈 피아노 & 오르골 선율 재생 중)'
+                : '배경음악 켜기 (재즈 피아노 & 오르골 선율)'
+            }
+            aria-label={bgmPlaying ? '배경음악 끄기' : '배경음악 켜기'}
+            className={`flex h-6 w-6 items-center justify-center rounded-full transition ${
+              bgmPlaying
+                ? 'bg-[#c85a28] text-white shadow-sm ring-1 ring-[#fde68a]/60'
+                : 'bg-[#2a201b] text-[#cbbba8] hover:bg-[#3a2d26] hover:text-white'
+            }`}
+          >
+            {bgmPlaying ? (
+              <Volume2 className="h-3.5 w-3.5" />
+            ) : (
+              <VolumeX className="h-3.5 w-3.5" />
+            )}
+          </button>
 
           <button
             type="button"
