@@ -135,6 +135,14 @@ class BookstoreBgmEngine {
   private barIndex: number = 0;
   private timerId: number | null = null;
 
+  // Procedural ASMR Channels (Window Rain, Page Turn & Pencil, Warm Fireplace/LP Crackle)
+  private asmrLevels = { rain: 0, paper: 0, fireplace: 0 };
+  private rainSource: AudioBufferSourceNode | null = null;
+  private rainGain: GainNode | null = null;
+  private fireSource: AudioBufferSourceNode | null = null;
+  private fireGain: GainNode | null = null;
+  private paperTimerId: number | null = null;
+
   // Initialize AudioContext and spatial audio graph on user gesture
   private ensureContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -538,6 +546,196 @@ class BookstoreBgmEngine {
 
     osc.start(startTime);
     osc.stop(startTime + duration + 0.25);
+  }
+
+  // ============================================================
+  // PROCEDURAL BOOKSTORE ASMR AMBIENCE CHANNELS
+  // 1) Window Rain (창밖 잔잔한 봄비 소리)
+  // 2) Paper Page Turn & Pencil Rustle (책장 넘김 & 연필 사각거림)
+  // 3) Warm Hearth / Vinyl Crackle (모닥불 & 아날로그 LP 온기)
+  // ============================================================
+  private initAsmrNodes(ctx: AudioContext) {
+    if (!this.rainGain) {
+      this.rainGain = ctx.createGain();
+      this.rainGain.gain.value = 0.0001;
+
+      const rainFilter = ctx.createBiquadFilter();
+      rainFilter.type = 'lowpass';
+      rainFilter.frequency.value = 880;
+
+      const sampleRate = ctx.sampleRate;
+      const len = sampleRate * 5;
+      const rainBuf = ctx.createBuffer(2, len, sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const data = rainBuf.getChannelData(ch);
+        let b0 = 0;
+        let b1 = 0;
+        let b2 = 0;
+        for (let i = 0; i < len; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.997 * b0 + white * 0.029;
+          b1 = 0.985 * b1 + white * 0.032;
+          b2 = 0.95 * b2 + white * 0.045;
+          // Gentle window droplet patter modulation
+          const droplet =
+            Math.random() > 0.9985 ? (Math.random() - 0.5) * 0.35 : 0;
+          data[i] = (b0 + b1 + b2 + droplet) * 0.32;
+        }
+      }
+
+      this.rainSource = ctx.createBufferSource();
+      this.rainSource.buffer = rainBuf;
+      this.rainSource.loop = true;
+      this.rainSource.connect(rainFilter);
+      rainFilter.connect(this.rainGain);
+      this.rainGain.connect(ctx.destination);
+      this.rainSource.start();
+    }
+
+    if (!this.fireGain) {
+      this.fireGain = ctx.createGain();
+      this.fireGain.gain.value = 0.0001;
+
+      const fireFilter = ctx.createBiquadFilter();
+      fireFilter.type = 'bandpass';
+      fireFilter.frequency.value = 1450;
+      fireFilter.Q.value = 0.7;
+
+      const sampleRate = ctx.sampleRate;
+      const len = sampleRate * 5;
+      const fireBuf = ctx.createBuffer(2, len, sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const data = fireBuf.getChannelData(ch);
+        let lowHum = 0;
+        for (let i = 0; i < len; i++) {
+          const white = Math.random() * 2 - 1;
+          lowHum = lowHum * 0.992 + white * 0.008;
+          const crackle =
+            Math.random() > 0.9972
+              ? (Math.random() * 2 - 1) * 0.55
+              : Math.random() > 0.992
+              ? (Math.random() * 2 - 1) * 0.14
+              : 0;
+          data[i] = lowHum * 0.45 + crackle * 0.38;
+        }
+      }
+
+      this.fireSource = ctx.createBufferSource();
+      this.fireSource.buffer = fireBuf;
+      this.fireSource.loop = true;
+      this.fireSource.connect(fireFilter);
+      fireFilter.connect(this.fireGain);
+      this.fireGain.connect(ctx.destination);
+      this.fireSource.start();
+    }
+  }
+
+  public setAsmrLevels(levels: {
+    rain: number;
+    paper: number;
+    fireplace: number;
+  }) {
+    this.asmrLevels = { ...levels };
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+
+    this.initAsmrNodes(ctx);
+    const now = ctx.currentTime;
+
+    if (this.rainGain) {
+      const targetRain =
+        levels.rain > 0.01 ? Math.max(0.001, levels.rain * 0.36) : 0.0001;
+      this.rainGain.gain.setTargetAtTime(targetRain, now, 0.25);
+    }
+
+    if (this.fireGain) {
+      const targetFire =
+        levels.fireplace > 0.01
+          ? Math.max(0.001, levels.fireplace * 0.34)
+          : 0.0001;
+      this.fireGain.gain.setTargetAtTime(targetFire, now, 0.25);
+    }
+
+    if (levels.paper > 0.02 && this.paperTimerId === null) {
+      this.schedulePaperRustle();
+    } else if (levels.paper <= 0.02 && this.paperTimerId !== null) {
+      window.clearTimeout(this.paperTimerId);
+      this.paperTimerId = null;
+    }
+  }
+
+  public getAsmrLevels() {
+    return { ...this.asmrLevels };
+  }
+
+  private schedulePaperRustle() {
+    if (this.asmrLevels.paper <= 0.02 || !this.ctx) {
+      this.paperTimerId = null;
+      return;
+    }
+
+    this.playPaperTurnSound(this.asmrLevels.paper);
+
+    const nextDelayMs = 4200 + Math.random() * 3400;
+    this.paperTimerId = window.setTimeout(() => {
+      this.schedulePaperRustle();
+    }, nextDelayMs);
+  }
+
+  // Synthesize a realistic soft book page turn / pencil sketch whisper
+  private playPaperTurnSound(level: number) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const dur = 0.42;
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+
+    for (let i = 0; i < len; i++) {
+      const t = i / len;
+      const env = Math.sin(t * Math.PI) * Math.pow(1 - t, 0.7);
+      data[i] = (Math.random() * 2 - 1) * env * 0.28;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1600, ctx.currentTime);
+    filter.frequency.linearRampToValueAtTime(2400, ctx.currentTime + dur);
+    filter.Q.value = 1.4;
+
+    const gain = ctx.createGain();
+    gain.gain.value = Math.min(0.28, level * 0.22);
+
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+  }
+
+  // Bright Music-Box Chime when a Treasure-Hunt Stamp is discovered!
+  public playStampCollectedChime() {
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime + 0.02;
+    const notes = [77, 81, 84, 89]; // F5, A5, C6, F6
+    notes.forEach((midi, idx) => {
+      this.playMusicBoxChime(now + idx * 0.11, midiToFreq(midi), 1.2, 0.75);
+    });
+  }
+
+  // Peaceful Singing-Bowl & Felt-Piano Chord when Reading Timer finishes!
+  public playTimerCompleteChime() {
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime + 0.02;
+    const chord = [65, 69, 72, 76, 81]; // Fmaj9
+    chord.forEach((midi, idx) => {
+      this.playFeltPianoNote(now + idx * 0.09, midiToFreq(midi), 2.8, 0.65, 0);
+      this.playMusicBoxChime(now + idx * 0.09, midiToFreq(midi), 2.2, 0.55);
+    });
   }
 }
 

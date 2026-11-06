@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Award,
   BookOpen,
+  CheckCircle2,
+  CloudRain,
   Compass,
   DoorOpen,
   Eye,
+  Flame,
   HelpCircle,
   Info,
   Lamp,
   MapPin,
   Maximize2,
+  Pause,
+  Play,
   RotateCcw,
+  Sparkles,
+  Timer,
   UserCheck,
   Volume2,
   VolumeX,
@@ -21,6 +29,8 @@ import {
   REPRESENTATIVE_BOOKS,
   SEAT_OBJECTS,
   SPACE_STORIES,
+  STAMP_MISSIONS,
+  StampMissionData,
   WAYPOINT_NODES,
 } from '../data/bookstoreData';
 import {
@@ -85,6 +95,16 @@ interface BookstoreHUDProps {
   onEnterStoreFromRoad: () => void;
   bgmPlaying: boolean;
   onToggleBgm: () => void;
+  asmrLevels: { rain: number; paper: number; fireplace: number };
+  onChangeAsmrLevels: (next: {
+    rain: number;
+    paper: number;
+    fireplace: number;
+  }) => void;
+  onReadingTimerComplete: (minutes: number) => void;
+  collectedStampIds: string[];
+  onWalkToStampMission: (mission: StampMissionData) => void;
+  onResetStamps: () => void;
 }
 
 export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
@@ -127,10 +147,55 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
   onEnterStoreFromRoad,
   bgmPlaying,
   onToggleBgm,
+  asmrLevels,
+  onChangeAsmrLevels,
+  onReadingTimerComplete,
+  collectedStampIds,
+  onWalkToStampMission,
+  onResetStamps,
 }) => {
   const [showMinimap, setShowMinimap] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showPhotoGallery, setShowPhotoGallery] = useState(false);
+  const [showTimerAsmrModal, setShowTimerAsmrModal] = useState(false);
+  const [showStampTourModal, setShowStampTourModal] = useState(false);
+
+  // Reading Focus Timer State (10 / 25 / 45 min Pomodoro)
+  const [timerDurationMinutes, setTimerDurationMinutes] = useState<10 | 25 | 45>(
+    25
+  );
+  const [timerRemainingSec, setTimerRemainingSec] = useState<number>(25 * 60);
+  const [timerRunning, setTimerRunning] = useState<boolean>(false);
+  const [completedSessions, setCompletedSessions] = useState<number>(0);
+  const [honoraryReaderName, setHonoraryReaderName] = useState<string>('');
+  const [honorarySigned, setHonorarySigned] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!timerRunning) return;
+    const interval = window.setInterval(() => {
+      setTimerRemainingSec((prev) => {
+        if (prev <= 1) {
+          setTimerRunning(false);
+          setCompletedSessions((c) => c + 1);
+          onReadingTimerComplete(timerDurationMinutes);
+          return timerDurationMinutes * 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [timerRunning, timerDurationMinutes, onReadingTimerComplete]);
+
+  const formatTimer = (totalSec: number) => {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  const hasActiveAsmr =
+    asmrLevels.rain > 0.02 ||
+    asmrLevels.paper > 0.02 ||
+    asmrLevels.fireplace > 0.02;
   const [guestbookEntries, setGuestbookEntries] = useState<GuestbookEntry[]>([
     {
       id: 'gb1',
@@ -293,6 +358,48 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
             ) : (
               <VolumeX className="h-3.5 w-3.5" />
             )}
+          </button>
+
+          {/* Feature #2: Reading Focus Timer & Bookstore ASMR Station Button */}
+          <button
+            type="button"
+            data-testid="timer-asmr-btn"
+            onClick={() => setShowTimerAsmrModal(true)}
+            title="창가 독서 타이머 & 서점 ASMR 모드 (빗소리·책장·모닥불)"
+            className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium transition ${
+              timerRunning || hasActiveAsmr
+                ? 'bg-amber-600 text-white shadow-sm ring-1 ring-[#fde68a]'
+                : 'bg-[#2a201b] text-[#fde68a] hover:bg-[#c85a28] hover:text-white'
+            }`}
+          >
+            <Timer className="h-3.5 w-3.5" />
+            {timerRunning ? (
+              <span className="font-mono text-[10px] font-bold">
+                {formatTimer(timerRemainingSec)}
+              </span>
+            ) : (
+              <span className="hidden md:inline">독서·ASMR</span>
+            )}
+          </button>
+
+          {/* Feature #3: Dokja 5-Signature Stamp Tour Button */}
+          <button
+            type="button"
+            data-testid="stamp-tour-btn"
+            onClick={() => setShowStampTourModal(true)}
+            title="독자서점 5대 시그니처 보물찾기 스탬프 투어"
+            className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold transition ${
+              collectedStampIds.length >= STAMP_MISSIONS.length
+                ? 'bg-amber-500 text-[#191310] shadow-sm ring-1 ring-white'
+                : collectedStampIds.length > 0
+                ? 'bg-[#c85a28]/90 text-white'
+                : 'bg-[#2a201b] text-[#fde68a] hover:bg-[#c85a28] hover:text-white'
+            }`}
+          >
+            <Award className="h-3.5 w-3.5" />
+            <span className="text-[10px] sm:text-[11px]">
+              {collectedStampIds.length}/{STAMP_MISSIONS.length}
+            </span>
           </button>
 
           <button
@@ -519,7 +626,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
 
           {/* Seated Compact Pill */}
           {isSeated && activeSeat && (
-            <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-purple-950/90 px-3 py-1.5 shadow-lg border border-purple-400/40 backdrop-blur-md">
+            <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5 rounded-full bg-purple-950/90 px-3 py-1.5 shadow-lg border border-purple-400/40 backdrop-blur-md">
               <span className="text-[11px] font-medium text-purple-100">
                 🪑 {activeSeat.name} 착석 중
               </span>
@@ -532,6 +639,13 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                   📖 읽기
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => setShowTimerAsmrModal(true)}
+                className="rounded-full bg-amber-600/90 px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-amber-500 transition"
+              >
+                🌧️ 독서 타이머·ASMR
+              </button>
               <button
                 type="button"
                 onClick={onStandUp}
@@ -1125,12 +1239,522 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               </div>
               <div className="rounded-xl bg-[#241c17] p-3 border border-[#362a23]">
                 <strong className="text-[#f8f1e5]">
-                  3. 의자·소파에 앉기 & 책 읽기
+                  3. 의자에 앉기 · 독서 타이머 & 5대 보물찾기
                 </strong>
                 <p className="mt-1">
-                  • 의자나 벤치를 터치해 앉을 수 있으며, 책을 든 상태에서 독서 모드를 실행할 수 있습니다.
+                  • 창가 책상이나 대형 테이블 의자에 앉아 <strong>독서 타이머 & ASMR(빗소리·책장·모닥불)</strong>을 켜고 여유롭게 머물 수 있습니다.
+                  <br />• 서점 곳곳의 <strong>5대 시그니처 보물</strong>을 모두 발견하면 명예 독자 디지털 책갈피가 발급됩니다.
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          MODAL 7 (FEATURE #2): READING FOCUS TIMER & BOOKSTORE ASMR LOUNGE
+         ============================================================ */}
+      {showTimerAsmrModal && (
+        <div
+          data-testid="timer-asmr-modal"
+          className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 sm:p-4 backdrop-blur-sm"
+        >
+          <div className="relative max-h-[90vh] max-w-xl w-full overflow-y-auto rounded-3xl bg-[#1b1411] p-5 sm:p-6 text-[#f5efe6] shadow-2xl border border-[#d97736]/60">
+            <button
+              type="button"
+              onClick={() => setShowTimerAsmrModal(false)}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-2 text-xs font-semibold text-[#e09f3e]">
+              <Timer className="h-4 w-4" />
+              <span>독자서점 창가 독서 라운지 · 포모도로 & 백색소음(ASMR)</span>
+            </div>
+            <h2 className="mt-1 font-serif text-xl sm:text-2xl font-bold text-[#f8f1e5]">
+              창가 책상 독서 타이머 & 서점 ASMR
+            </h2>
+            <p className="mt-1 text-xs text-[#cbbba8]">
+              실제 책을 읽거나 작업할 때 타이머와 서점 백색소음을 켜두고 독자서점 안에 오래도록 머물러 보세요. 창을 닫아도 상단 미니 타이머와 사운드는 계속 유지됩니다.
+            </p>
+
+            {/* 1. Pomodoro Reading Timer Card */}
+            <div className="mt-4 rounded-2xl bg-[#241c17] p-4 border border-[#3d2f28]">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-[#fde68a]">
+                  ⏱️ 집중 독서 타이머 선택
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {([10, 25, 45] as const).map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => {
+                        setTimerDurationMinutes(mins);
+                        setTimerRemainingSec(mins * 60);
+                        setTimerRunning(false);
+                      }}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                        timerDurationMinutes === mins
+                          ? 'bg-[#c85a28] text-white shadow'
+                          : 'bg-[#191310] text-[#cbbba8] hover:text-white'
+                      }`}
+                    >
+                      {mins}분
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl bg-[#191310]/90 px-5 py-4 border border-[#362a23]">
+                <div className="text-center sm:text-left">
+                  <div className="font-mono text-3xl sm:text-4xl font-bold tracking-wider text-[#fde68a]">
+                    {formatTimer(timerRemainingSec)}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-[#b8a99a]">
+                    {timerRunning
+                      ? '✨ 독자서점에서 집중 독서 중입니다...'
+                      : completedSessions > 0
+                      ? `오늘 완료한 독서 세션: ${completedSessions}회`
+                      : '원하는 시간을 고르고 독서를 시작해 보세요'}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    data-testid="timer-start-pause-btn"
+                    onClick={() => setTimerRunning((r) => !r)}
+                    className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow transition ${
+                      timerRunning
+                        ? 'bg-amber-600 hover:bg-amber-500'
+                        : 'bg-[#c85a28] hover:bg-[#e06630]'
+                    }`}
+                  >
+                    {timerRunning ? (
+                      <>
+                        <Pause className="h-3.5 w-3.5" />
+                        <span>일시정지</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3.5 w-3.5" />
+                        <span>독서 시작</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTimerRunning(false);
+                      setTimerRemainingSec(timerDurationMinutes * 60);
+                    }}
+                    className="rounded-xl bg-[#2a201b] px-3 py-2.5 text-xs font-medium text-[#cbbba8] hover:text-white transition"
+                  >
+                    초기화
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Seat Navigation Shortcuts */}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const winChair = SEAT_OBJECTS.find(
+                      (s) => s.id === 'seat_window_chair'
+                    );
+                    if (winChair) {
+                      setShowTimerAsmrModal(false);
+                      onSitOnSeat(winChair);
+                    }
+                  }}
+                  className="flex-1 rounded-xl bg-[#2e231d] px-3 py-2 text-xs font-medium text-[#fde68a] hover:bg-[#c85a28] hover:text-white transition text-center"
+                >
+                  🪑 입구 창가 독서 책상에 앉기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const workChair = SEAT_OBJECTS.find(
+                      (s) => s.id === 'seat_workshop_chair'
+                    );
+                    if (workChair) {
+                      setShowTimerAsmrModal(false);
+                      onSitOnSeat(workChair);
+                    }
+                  }}
+                  className="flex-1 rounded-xl bg-[#2e231d] px-3 py-2 text-xs font-medium text-[#fde68a] hover:bg-[#c85a28] hover:text-white transition text-center"
+                >
+                  🪑 안쪽 대형 독서 테이블에 앉기
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Bookstore ASMR Sound Mixer */}
+            <div className="mt-4 rounded-2xl bg-[#241c17] p-4 border border-[#3d2f28]">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <span className="text-xs font-semibold text-[#fde68a]">
+                  🎧 서점 공간 사운드 & ASMR 믹서
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    data-testid="asmr-cozy-preset-btn"
+                    onClick={() => {
+                      if (!bgmPlaying) onToggleBgm();
+                      onChangeAsmrLevels({
+                        rain: 0.65,
+                        paper: 0.5,
+                        fireplace: 0.4,
+                      });
+                    }}
+                    className="rounded-full bg-amber-600/25 border border-amber-500/40 px-2.5 py-1 text-[11px] font-semibold text-[#fde68a] hover:bg-amber-600 hover:text-white transition"
+                  >
+                    ✨ 비 오는 밤의 책방 프리셋 켜기
+                  </button>
+                  {hasActiveAsmr && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onChangeAsmrLevels({ rain: 0, paper: 0, fireplace: 0 })
+                      }
+                      className="rounded-full bg-[#191310] px-2.5 py-1 text-[11px] text-[#cbbba8] hover:text-white transition"
+                    >
+                      ASMR 모두 끄기
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {/* Channel 1: Jazz Piano & Music Box BGM */}
+                <div className="flex items-center justify-between rounded-xl bg-[#191310] px-3.5 py-2.5 border border-[#332721]">
+                  <div className="flex items-center gap-2.5">
+                    <Volume2 className="h-4 w-4 text-[#e09f3e]" />
+                    <div>
+                      <div className="text-xs font-semibold text-[#f8f1e5]">
+                        서점 감성 재즈 피아노 & 오르골 선율
+                      </div>
+                      <div className="text-[10px] text-[#a89888]">
+                        출입문 입장과 연동되는 따뜻한 펠트 피아노 배경음악
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onToggleBgm}
+                    className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                      bgmPlaying
+                        ? 'bg-[#c85a28] text-white'
+                        : 'bg-[#2a201b] text-[#cbbba8]'
+                    }`}
+                  >
+                    {bgmPlaying ? '켜짐' : '꺼짐'}
+                  </button>
+                </div>
+
+                {/* Channel 2: Window Rain ASMR */}
+                <div className="rounded-xl bg-[#191310] px-3.5 py-2.5 border border-[#332721]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CloudRain className="h-4 w-4 text-sky-400" />
+                      <span className="text-xs font-semibold text-[#f8f1e5]">
+                        창밖 레이스 커튼 너머 잔잔한 빗소리
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-sky-300">
+                      {Math.round(asmrLevels.rain * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={asmrLevels.rain}
+                    onChange={(e) =>
+                      onChangeAsmrLevels({
+                        ...asmrLevels,
+                        rain: parseFloat(e.target.value),
+                      })
+                    }
+                    className="mt-2 h-1.5 w-full cursor-pointer accent-sky-400"
+                  />
+                </div>
+
+                {/* Channel 3: Paper Page Turn & Pencil Rustle */}
+                <div className="rounded-xl bg-[#191310] px-3.5 py-2.5 border border-[#332721]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-amber-300" />
+                      <span className="text-xs font-semibold text-[#f8f1e5]">
+                        종이 책장 넘기는 소리 & 연필 사각거림
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-amber-300">
+                      {Math.round(asmrLevels.paper * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={asmrLevels.paper}
+                    onChange={(e) =>
+                      onChangeAsmrLevels({
+                        ...asmrLevels,
+                        paper: parseFloat(e.target.value),
+                      })
+                    }
+                    className="mt-2 h-1.5 w-full cursor-pointer accent-amber-400"
+                  />
+                </div>
+
+                {/* Channel 4: Warm Fireplace / Analog LP Crackle */}
+                <div className="rounded-xl bg-[#191310] px-3.5 py-2.5 border border-[#332721]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Flame className="h-4 w-4 text-orange-400" />
+                      <span className="text-xs font-semibold text-[#f8f1e5]">
+                        모닥불 타닥거림 & 아날로그 LP 온기
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-orange-300">
+                      {Math.round(asmrLevels.fireplace * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={asmrLevels.fireplace}
+                    onChange={(e) =>
+                      onChangeAsmrLevels({
+                        ...asmrLevels,
+                        fireplace: parseFloat(e.target.value),
+                      })
+                    }
+                    className="mt-2 h-1.5 w-full cursor-pointer accent-orange-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowTimerAsmrModal(false)}
+                className="rounded-xl bg-[#c85a28] px-4 py-2 text-xs font-bold text-white shadow hover:bg-[#e06630] transition"
+              >
+                창 닫고 서점 풍경 감상하며 머물기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          MODAL 8 (FEATURE #3): DOKJA 5-SIGNATURE TREASURE HUNT STAMP TOUR
+         ============================================================ */}
+      {showStampTourModal && (
+        <div
+          data-testid="stamp-tour-modal"
+          className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 sm:p-4 backdrop-blur-sm"
+        >
+          <div className="relative max-h-[90vh] max-w-2xl w-full overflow-y-auto rounded-3xl bg-[#1b1411] p-5 sm:p-6 text-[#f5efe6] shadow-2xl border border-[#d97736]/60">
+            <button
+              type="button"
+              onClick={() => setShowStampTourModal(false)}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-2 text-xs font-semibold text-[#e09f3e]">
+              <Award className="h-4 w-4" />
+              <span>독자서점 & 딤프치 공간 탐험 미션</span>
+            </div>
+            <h2 className="mt-1 font-serif text-xl sm:text-2xl font-bold text-[#f8f1e5]">
+              독자서점 5대 시그니처 보물찾기 스탬프 투어
+            </h2>
+            <p className="mt-1 text-xs text-[#cbbba8]">
+              서점 구석구석에 숨어 있는 5가지 실제 매력 포인트를 찾아 가까이 걸어가거나 클릭해 보세요! 5개를 모두 모으면 <strong>‘독자서점 명예 단골 독자 책갈피’</strong>가 발급됩니다.
+            </p>
+
+            {/* Stamp Progress Bar */}
+            <div className="mt-4 rounded-2xl bg-[#241c17] p-3.5 border border-[#3d2f28]">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-[#fde68a]">
+                  현재 수집한 시그니처 보물 스탬프
+                </span>
+                <span className="font-mono text-sm font-bold text-[#e09f3e]">
+                  {collectedStampIds.length} / {STAMP_MISSIONS.length} 달성
+                </span>
+              </div>
+              <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-[#140f0c]">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#c85a28] to-[#facc15] transition-all duration-500"
+                  style={{
+                    width: `${
+                      (collectedStampIds.length / STAMP_MISSIONS.length) * 100
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* 5 Signature Stamp Cards */}
+            <div className="mt-4 space-y-2.5">
+              {STAMP_MISSIONS.map((mission) => {
+                const isCollected = collectedStampIds.includes(mission.id);
+                return (
+                  <div
+                    key={mission.id}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl p-3.5 border transition ${
+                      isCollected
+                        ? 'bg-[#281e17] border-amber-500/60 shadow-md'
+                        : 'bg-[#211915] border-[#362a23]'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl shadow-inner ${
+                          isCollected
+                            ? 'bg-gradient-to-br from-amber-500 to-[#c85a28] text-white ring-2 ring-[#fde68a]'
+                            : 'bg-[#16110e] text-[#786b5e] border border-[#332721]'
+                        }`}
+                      >
+                        {mission.icon}
+                      </div>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded bg-[#16110e] px-1.5 py-0.5 text-[10px] font-semibold text-[#e09f3e]">
+                            보물 #{mission.stepNumber} · {mission.zone}
+                          </span>
+                          {isCollected && (
+                            <span className="flex items-center gap-0.5 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-[#fde68a]">
+                              <CheckCircle2 className="h-3 w-3 text-amber-400" />
+                              발견 완료
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="mt-1 font-serif text-sm font-bold text-[#f8f1e5]">
+                          {mission.title}
+                        </h3>
+                        <p className="mt-0.5 text-xs leading-relaxed text-[#cbbba8]">
+                          {isCollected ? mission.discoveredNote : mission.clue}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex sm:flex-col items-end justify-end gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowStampTourModal(false);
+                          onWalkToStampMission(mission);
+                        }}
+                        className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition whitespace-nowrap ${
+                          isCollected
+                            ? 'bg-[#362a23] text-[#fde68a] hover:bg-[#c85a28] hover:text-white'
+                            : 'bg-[#c85a28] text-white hover:bg-[#e06630] shadow'
+                        }`}
+                      >
+                        {isCollected
+                          ? '👣 다시 가보기'
+                          : '👣 힌트 장소로 이동'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 5/5 Completion Reward: Golden Leather Honorary Reader Bookmark Pass */}
+            {collectedStampIds.length >= STAMP_MISSIONS.length && (
+              <div className="mt-5 rounded-2xl bg-gradient-to-br from-[#3b2314] via-[#2a180d] to-[#1c120b] p-5 border-2 border-[#d4af37] shadow-2xl">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase text-[#fde68a]">
+                    <Sparkles className="h-4 w-4 text-amber-400" />
+                    DOKJA & DIMPCHI HONORARY READER PASS
+                  </span>
+                  <span className="rounded-full bg-[#d4af37] px-2.5 py-0.5 text-[10px] font-extrabold text-[#191310]">
+                    5/5 전 구역 완주
+                  </span>
+                </div>
+                <h3 className="mt-2 font-serif text-lg sm:text-xl font-bold text-white">
+                  🏅 독자서점 & 딤프치 명예 단골 독자 책갈피
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-[#f5efe6]/90">
+                  독자서점의 입구 북카트부터 6구 크리스탈 샹들리에, 마스코트 하얀 오리, 추천 도서 테이블, 그리고 안쪽 가죽공방 딤프치까지 모든 시그니처를 발견하셨습니다!
+                </p>
+
+                {!honorarySigned ? (
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={honoraryReaderName}
+                      onChange={(e) => setHonoraryReaderName(e.target.value)}
+                      placeholder="책갈피에 각인할 닉네임을 입력해 주세요"
+                      className="flex-1 rounded-xl bg-[#191310]/90 px-3 py-2 text-xs text-white placeholder-[#9c8c7c] border border-[#d4af37]/40 focus:outline-none focus:border-[#fde68a]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const reader =
+                          honoraryReaderName.trim() || '명예 단골 독자';
+                        setGuestbookEntries((prev) => [
+                          {
+                            id: `gb_stamp_${Date.now()}`,
+                            nickname: `🏅 ${reader}`,
+                            message:
+                              '독자서점 5대 시그니처 보물찾기 스탬프 투어(5/5)를 모두 완주하고 명예 독자 책갈피를 발급받았습니다!',
+                            favBook: heldBook?.title || '독자서점 5대 시그니처 완주',
+                            date: '2026.11.06',
+                          },
+                          ...prev,
+                        ]);
+                        setHonorarySigned(true);
+                      }}
+                      className="rounded-xl bg-[#d4af37] px-4 py-2 text-xs font-extrabold text-[#191310] hover:bg-[#fde68a] transition"
+                    >
+                      명예 독자 각인 & 방명록에 남기기
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-xl bg-[#191310]/80 p-3 border border-[#d4af37]/50 text-xs text-[#fde68a]">
+                    ✨ <strong>{honoraryReaderName.trim() || '명예 단골 독자'}</strong>님의 명예 독자 각인이 추천 테이블 방명록에 기록되었습니다!
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-4 flex items-center justify-between">
+              {collectedStampIds.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHonorarySigned(false);
+                    onResetStamps();
+                  }}
+                  className="text-xs text-[#9c8c7c] underline hover:text-white"
+                >
+                  스탬프 투어 처음부터 다시 하기
+                </button>
+              ) : (
+                <span />
+              )}
+              <button
+                type="button"
+                onClick={() => setShowStampTourModal(false)}
+                className="rounded-xl bg-[#2a201b] px-4 py-2 text-xs font-semibold text-[#f8f1e5] hover:bg-[#c85a28] transition"
+              >
+                닫기
+              </button>
             </div>
           </div>
         </div>

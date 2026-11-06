@@ -4,6 +4,8 @@ import {
   CHARACTER_START_POSITION,
   CHARACTER_START_ROTATION_Y,
   SEAT_OBJECTS,
+  STAMP_MISSIONS,
+  StampMissionData,
 } from './data/bookstoreData';
 import {
   ActivePromptType,
@@ -68,6 +70,19 @@ export function App() {
   const [windowLampOn, setWindowLampOn] = useState<boolean>(true);
   const [bgmPlaying, setBgmPlaying] = useState<boolean>(false);
   const userMutedBgmRef = useRef<boolean>(false);
+  const [asmrLevels, setAsmrLevels] = useState<{
+    rain: number;
+    paper: number;
+    fireplace: number;
+  }>({ rain: 0, paper: 0, fireplace: 0 });
+  const [collectedStampIds, setCollectedStampIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('dokja_stamps_v1');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [toastMessage, setToastMessage] = useState<string | null>(
     '독자서점 외부 도로에 도착했습니다. 계단과 열린 출입문을 통해 서점 안으로 걸어 들어가 보세요!'
   );
@@ -113,6 +128,88 @@ export function App() {
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
+  }, []);
+
+  // Unlock a signature treasure-hunt stamp by mission ID
+  const unlockStampMission = useCallback(
+    (mission: StampMissionData) => {
+      setCollectedStampIds((prev) => {
+        if (prev.includes(mission.id)) return prev;
+        const next = [...prev, mission.id];
+        try {
+          localStorage.setItem('dokja_stamps_v1', JSON.stringify(next));
+        } catch {
+          // ignore storage errors
+        }
+        bookstoreBgm.playStampCollectedChime();
+        if (next.length >= STAMP_MISSIONS.length) {
+          setToastMessage(
+            `🎉 5대 시그니처 보물찾기 완주 성공! (${next.length}/${STAMP_MISSIONS.length}) 상단 🏅 스탬프 창에서 ‘명예 독자 책갈피’를 확인해 보세요!`
+          );
+        } else {
+          setToastMessage(
+            `🏅 보물찾기 스탬프 획득! (${next.length}/${STAMP_MISSIONS.length}) — ${mission.icon} ${mission.title}`
+          );
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  // Unlock stamp if any linked object (story, table, seat) is interacted with
+  const unlockStampByLinkedId = useCallback(
+    (linkedId: string) => {
+      const matched = STAMP_MISSIONS.find((m) =>
+        m.linkedIds.includes(linkedId)
+      );
+      if (matched) {
+        unlockStampMission(matched);
+      }
+    },
+    [unlockStampMission]
+  );
+
+  // Auto-detect proximity to any of the 5 signature spots when walking inside the bookstore
+  useEffect(() => {
+    const [cx, , cz] = characterPos;
+    if (cz > 6.3) return; // Only trigger inside the bookstore
+    for (const mission of STAMP_MISSIONS) {
+      if (collectedStampIds.includes(mission.id)) continue;
+      const dist = Math.hypot(
+        cx - mission.targetPosition[0],
+        cz - mission.targetPosition[1]
+      );
+      if (dist <= mission.triggerRadius) {
+        unlockStampMission(mission);
+        break;
+      }
+    }
+  }, [characterPos, collectedStampIds, unlockStampMission]);
+
+  const handleChangeAsmrLevels = useCallback(
+    (next: { rain: number; paper: number; fireplace: number }) => {
+      setAsmrLevels(next);
+      bookstoreBgm.setAsmrLevels(next);
+    },
+    []
+  );
+
+  const handleReadingTimerComplete = useCallback((minutes: number) => {
+    bookstoreBgm.playTimerCompleteChime();
+    setToastMessage(
+      `🔔 ${minutes}분간의 독자서점 집중 독서 시간이 완료되었습니다! 잠시 눈을 쉬어 주세요.`
+    );
+  }, []);
+
+  const handleResetStamps = useCallback(() => {
+    setCollectedStampIds([]);
+    try {
+      localStorage.removeItem('dokja_stamps_v1');
+    } catch {
+      // ignore
+    }
+    setToastMessage('🔄 독자서점 5대 시그니처 보물찾기 스탬프를 초기화했습니다.');
   }, []);
 
   useEffect(() => {
@@ -366,11 +463,12 @@ export function App() {
           );
         } else {
           setActionState('SITTING');
-          showToast(`🪑 ${seat.name}에 앉았습니다.`);
+          showToast(`🪑 ${seat.name}에 앉았습니다. 독서 타이머 & ASMR로 여유롭게 머물러 보세요!`);
         }
+        unlockStampByLinkedId(seat.id);
       });
     },
-    [actionState, heldBook, walkToAndExecute, showToast]
+    [actionState, heldBook, walkToAndExecute, showToast, unlockStampByLinkedId]
   );
 
   // Find nearest seat, walk there, sit down, and start reading held book
@@ -421,9 +519,10 @@ export function App() {
         rotationYRef.current = table.approachFacingY;
         setActionState('IDLE');
         setInspectingTable(table);
+        unlockStampByLinkedId(table.id);
       });
     },
-    [actionState, walkToAndExecute]
+    [actionState, walkToAndExecute, unlockStampByLinkedId]
   );
 
   const handlePlaceBookOnTable = useCallback(
@@ -461,9 +560,31 @@ export function App() {
         rotationYRef.current = story.approachFacingY;
         setActionState('IDLE');
         setInspectingStory(story);
+        unlockStampByLinkedId(story.id);
       });
     },
-    [actionState, walkToAndExecute]
+    [actionState, walkToAndExecute, unlockStampByLinkedId]
+  );
+
+  // Walk directly to a signature stamp mission spot from the Stamp Tour card
+  const handleWalkToStampMission = useCallback(
+    (mission: StampMissionData) => {
+      if (actionState === 'INTERACTING') return;
+      setBrowsingShelf(null);
+      setInspectingBook(null);
+      setInspectingTable(null);
+      setInspectingStory(null);
+      showToast(`👣 '${mission.title}' 장소로 걸어갑니다...`);
+      walkToAndExecute(
+        mission.targetPosition[0],
+        mission.targetPosition[1],
+        () => {
+          setActionState('IDLE');
+          unlockStampMission(mission);
+        }
+      );
+    },
+    [actionState, walkToAndExecute, showToast, unlockStampMission]
   );
 
   // Trigger Contextual [E] Prompt Action
@@ -571,9 +692,17 @@ export function App() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#14110f] select-none touch-none">
-      {/* Toast Notification Banner (Desktop only so mobile screen stays completely clean) */}
+      {/* Toast Notification Banner (Shown on desktop, and also on mobile when a Stamp or Timer event occurs) */}
       {toastMessage && (
-        <div className="pointer-events-none hidden sm:block fixed left-1/2 top-16 z-40 -translate-x-1/2 rounded-full bg-[#191310]/90 px-4 py-1 text-xs font-medium text-[#fde68a] shadow-xl border border-[#d4af37]/35 backdrop-blur-md transition-all">
+        <div
+          className={`pointer-events-none fixed left-1/2 top-14 sm:top-16 z-40 -translate-x-1/2 max-w-[92vw] truncate rounded-full bg-[#191310]/92 px-3.5 py-1 text-[11px] sm:text-xs font-medium text-[#fde68a] shadow-xl border border-[#d4af37]/40 backdrop-blur-md transition-all ${
+            toastMessage.startsWith('🏅') ||
+            toastMessage.startsWith('🎉') ||
+            toastMessage.startsWith('🔔')
+              ? 'block'
+              : 'hidden sm:block'
+          }`}
+        >
           {toastMessage}
         </div>
       )}
@@ -683,6 +812,12 @@ export function App() {
         onEnterStoreFromRoad={handleEnterStoreFromRoad}
         bgmPlaying={bgmPlaying}
         onToggleBgm={handleToggleBgm}
+        asmrLevels={asmrLevels}
+        onChangeAsmrLevels={handleChangeAsmrLevels}
+        onReadingTimerComplete={handleReadingTimerComplete}
+        collectedStampIds={collectedStampIds}
+        onWalkToStampMission={handleWalkToStampMission}
+        onResetStamps={handleResetStamps}
       />
     </div>
   );
