@@ -198,18 +198,21 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       const dy = e.clientY - lastPointerRef.current.y;
       lastPointerRef.current = { x: e.clientX, y: e.clientY };
 
-      const MOUSE_YAW_SENSITIVITY = 0.002;
-      const MOUSE_PITCH_SENSITIVITY = 0.0016;
+      // On mobile touch screens (narrower viewport), use a moderately faster sensitivity
+      // (~1.85x) so a single comfortable thumb swipe turns ~40-45° without feeling sluggish or dizzying
+      const isTouch = e.pointerType === 'touch' || window.innerWidth < 768;
+      const yawSensitivity = isTouch ? 0.0037 : 0.0022;
+      const pitchSensitivity = isTouch ? 0.0024 : 0.0017;
 
       targetCameraYawRef.current = normalizeAngle(
-        targetCameraYawRef.current - dx * MOUSE_YAW_SENSITIVITY
+        targetCameraYawRef.current - dx * yawSensitivity
       );
       targetCameraPitchRef.current = Math.max(
         0.12,
-        Math.min(1.05, targetCameraPitchRef.current + dy * MOUSE_PITCH_SENSITIVITY)
+        Math.min(1.05, targetCameraPitchRef.current + dy * pitchSensitivity)
       );
 
-      manualLookHoldTimerRef.current = 1.6;
+      manualLookHoldTimerRef.current = 1.8;
     };
 
     const onPointerUp = () => {
@@ -487,29 +490,29 @@ export const SceneController: React.FC<SceneControllerProps> = ({
     }
 
     // 4. Gentle, Velocity-Capped Camera Gaze Alignment
-    if (isDraggingRef.current) {
+    if (isDraggingRef.current || manualLookHoldTimerRef.current > 0) {
       cameraYawRef.current = lerpAngleShortest(
         cameraYawRef.current,
         targetCameraYawRef.current,
-        Math.min(1, dt * 8.0)
+        Math.min(1, dt * 9.5)
       );
       cameraPitchRef.current +=
         (targetCameraPitchRef.current - cameraPitchRef.current) *
-        Math.min(1, dt * 8.0);
+        Math.min(1, dt * 9.5);
 
       if (!isSeated && navPathRef.current.length === 0) {
         rotationYRef.current = stepAngleSmoothCapped(
           rotationYRef.current,
-          normalizeAngle(cameraYawRef.current + Math.PI),
-          4.0,
-          2.4,
+          normalizeAngle(targetCameraYawRef.current + Math.PI),
+          5.5,
+          3.2,
           dt
         );
       }
-    } else if (manualLookHoldTimerRef.current <= 0) {
+    } else {
       const desiredCameraYaw = normalizeAngle(rotationYRef.current - Math.PI);
-      const responsiveness = actionState === 'WALKING' ? 2.1 : 1.6;
-      const maxYawSpeed = actionState === 'WALKING' ? 1.05 : 0.85;
+      const responsiveness = actionState === 'WALKING' ? 2.2 : 1.8;
+      const maxYawSpeed = actionState === 'WALKING' ? 1.15 : 0.95;
 
       cameraYawRef.current = stepAngleSmoothCapped(
         cameraYawRef.current,
@@ -559,8 +562,10 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       }
     }
 
-    // Soft, cushioned camera position damping
-    const camLerp = Math.min(1, dt * 4.8);
+    // Soft, cushioned camera position damping (slightly more responsive during manual look)
+    const isManualLooking =
+      isDraggingRef.current || manualLookHoldTimerRef.current > 0;
+    const camLerp = Math.min(1, dt * (isManualLooking ? 6.4 : 4.8));
     smoothCamPosRef.current.lerp(
       new THREE.Vector3(safeCamX, safeCamY, safeCamZ),
       camLerp
@@ -576,7 +581,7 @@ export const SceneController: React.FC<SceneControllerProps> = ({
 
     smoothLookAtRef.current.lerp(
       new THREE.Vector3(lookTargetX, lookTargetY, lookTargetZ),
-      Math.min(1, dt * 5.2)
+      Math.min(1, dt * (isManualLooking ? 6.8 : 5.2))
     );
 
     camera.position.copy(smoothCamPosRef.current);
