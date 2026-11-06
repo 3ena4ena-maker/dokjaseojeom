@@ -1558,204 +1558,228 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
       )}
 
       {/* ============================================================
-          MODAL 8 (FEATURE #3): DOKJA 5-SIGNATURE TREASURE HUNT STAMP TOUR
+          MODAL 8 (FEATURE #3): VISUAL IMAGE-BASED DOKJA STAMP TOUR CARD
          ============================================================ */}
       {showStampTourModal && (
         <div
           data-testid="stamp-tour-modal"
-          className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 sm:p-4 backdrop-blur-sm"
+          className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-4 backdrop-blur-sm"
         >
-          <div className="relative max-h-[90vh] max-w-2xl w-full overflow-y-auto rounded-3xl bg-[#1b1411] p-5 sm:p-6 text-[#f5efe6] shadow-2xl border border-[#d97736]/60">
-            <button
-              type="button"
-              onClick={() => setShowStampTourModal(false)}
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#e09f3e]">
-              <Award className="h-4 w-4" />
-              <span>독자서점 & 딤프치 공간 탐험 미션</span>
-            </div>
-            <h2 className="mt-1 font-serif text-xl sm:text-2xl font-bold text-[#f8f1e5]">
-              독자서점 5대 시그니처 보물찾기 스탬프 투어
-            </h2>
-            <p className="mt-1 text-xs text-[#cbbba8]">
-              서점 구석구석에 숨어 있는 5가지 실제 매력 포인트를 찾아 가까이 걸어가거나 클릭해 보세요! 5개를 모두 모으면 <strong>‘독자서점 명예 단골 독자 책갈피’</strong>가 발급됩니다.
-            </p>
-
-            {/* Stamp Progress Bar */}
-            <div className="mt-4 rounded-2xl bg-[#241c17] p-3.5 border border-[#3d2f28]">
-              <div className="flex items-center justify-between text-xs font-semibold">
-                <span className="text-[#fde68a]">
-                  현재 수집한 시그니처 보물 스탬프
-                </span>
-                <span className="font-mono text-sm font-bold text-[#e09f3e]">
-                  {collectedStampIds.length} / {STAMP_MISSIONS.length} 달성
-                </span>
+          <div className="relative max-h-[90vh] max-w-2xl w-full overflow-y-auto rounded-3xl bg-[#1b1411] p-4 sm:p-5 text-[#f5efe6] shadow-2xl border border-[#d97736]/60">
+            {/* Compact Visual Header */}
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#332721]">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#c85a28] text-white shadow">
+                  <Award className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="font-serif text-base sm:text-lg font-bold text-[#f8f1e5]">
+                    독자서점 스탬프 투어
+                  </h2>
+                  <p className="text-[11px] text-[#b8a99a]">
+                    사진을 터치해 5곳을 방문하고 스탬프를 모아보세요
+                  </p>
+                </div>
               </div>
-              <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-[#140f0c]">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#c85a28] to-[#facc15] transition-all duration-500"
-                  style={{
-                    width: `${
-                      (collectedStampIds.length / STAMP_MISSIONS.length) * 100
-                    }%`,
-                  }}
-                />
+
+              {/* 5 Mini Stamp Circles + Close Button */}
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-1 rounded-full bg-[#120d0b] px-2.5 py-1 border border-[#332721]">
+                  {STAMP_MISSIONS.map((m) => {
+                    const done = collectedStampIds.includes(m.id);
+                    return (
+                      <span
+                        key={m.id}
+                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs transition ${
+                          done
+                            ? 'bg-amber-500 text-[#191310] shadow ring-1 ring-[#fde68a]'
+                            : 'bg-[#241c17] text-[#6b5d52] opacity-50'
+                        }`}
+                      >
+                        {done ? '✓' : m.stepNumber}
+                      </span>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowStampTourModal(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
-            {/* 5 Signature Stamp Cards */}
-            <div className="mt-4 space-y-2.5">
+            {/* 3x2 Visual Polaroid Photo Stamp Grid (5 Photo Spots + 1 Leather Bookmark Reward Card) */}
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
               {STAMP_MISSIONS.map((mission) => {
                 const isCollected = collectedStampIds.includes(mission.id);
                 return (
-                  <div
+                  <button
                     key={mission.id}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl p-3.5 border transition ${
+                    type="button"
+                    onClick={() => {
+                      setShowStampTourModal(false);
+                      onWalkToStampMission(mission);
+                    }}
+                    className={`group relative overflow-hidden rounded-2xl border text-left transition-all ${
                       isCollected
-                        ? 'bg-[#281e17] border-amber-500/60 shadow-md'
-                        : 'bg-[#211915] border-[#362a23]'
+                        ? 'bg-[#261d17] border-amber-400/80 shadow-lg ring-1 ring-amber-400/30'
+                        : 'bg-[#1f1713] border-[#382b24] hover:border-[#c85a28]'
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl shadow-inner ${
+                    {/* Real Bookstore Spot Photo */}
+                    <div className="relative h-32 sm:h-36 w-full overflow-hidden bg-black">
+                      <img
+                        src={mission.photoUrl}
+                        alt={mission.title}
+                        className={`h-full w-full object-cover transition duration-300 group-hover:scale-105 ${
                           isCollected
-                            ? 'bg-gradient-to-br from-amber-500 to-[#c85a28] text-white ring-2 ring-[#fde68a]'
-                            : 'bg-[#16110e] text-[#786b5e] border border-[#332721]'
+                            ? 'brightness-100 contrast-105'
+                            : 'brightness-55 contrast-95 grayscale-[30%]'
                         }`}
-                      >
-                        {mission.icon}
-                      </div>
-                      <div>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="rounded bg-[#16110e] px-1.5 py-0.5 text-[10px] font-semibold text-[#e09f3e]">
-                            보물 #{mission.stepNumber} · {mission.zone}
-                          </span>
-                          {isCollected && (
-                            <span className="flex items-center gap-0.5 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-[#fde68a]">
-                              <CheckCircle2 className="h-3 w-3 text-amber-400" />
-                              발견 완료
+                      />
+
+                      {/* Step Number Pill on Top-Left */}
+                      <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-[#fde68a] backdrop-blur-xs">
+                        #{mission.stepNumber} {mission.zone}
+                      </span>
+
+                      {/* Visual Stamp Overlay on Center of Photo */}
+                      {isCollected ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+                          <div className="-rotate-12 flex h-16 w-16 flex-col items-center justify-center rounded-full border-2 border-[#fde68a] bg-[#c85a28]/92 text-white shadow-xl ring-4 ring-[#c85a28]/30">
+                            <span className="text-lg leading-none">
+                              {mission.icon}
                             </span>
-                          )}
+                            <span className="mt-0.5 text-[9px] font-extrabold tracking-widest text-[#fde68a]">
+                              DOKJA ✓
+                            </span>
+                          </div>
                         </div>
-                        <h3 className="mt-1 font-serif text-sm font-bold text-[#f8f1e5]">
-                          {mission.title}
-                        </h3>
-                        <p className="mt-0.5 text-xs leading-relaxed text-[#cbbba8]">
-                          {isCollected ? mission.discoveredNote : mission.clue}
-                        </p>
-                      </div>
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="flex h-14 w-14 flex-col items-center justify-center rounded-full border-2 border-dashed border-[#fde68a]/65 bg-black/45 text-[#f8f1e5] group-hover:bg-[#c85a28]/85 group-hover:border-white transition">
+                            <span className="text-base leading-none">
+                              {mission.icon}
+                            </span>
+                            <span className="mt-0.5 text-[9px] font-semibold">
+                              이동하기
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex sm:flex-col items-end justify-end gap-1.5 shrink-0">
+                    {/* Minimal 1-Line Photo Caption */}
+                    <div className="flex items-center justify-between px-2.5 py-2">
+                      <span className="truncate font-serif text-xs font-bold text-[#f8f1e5]">
+                        {mission.title}
+                      </span>
+                      {isCollected ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                      ) : (
+                        <span className="shrink-0 text-[10px] font-semibold text-[#e09f3e]">
+                          👣 방문
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* 6th Card: Visual Golden Leather Bookmark Reward Card */}
+              <div
+                className={`relative flex flex-col justify-between overflow-hidden rounded-2xl border p-3 transition ${
+                  collectedStampIds.length >= STAMP_MISSIONS.length
+                    ? 'bg-gradient-to-br from-[#472916] via-[#2f1b0e] to-[#1b110b] border-2 border-[#d4af37] shadow-xl'
+                    : 'bg-[#18120f] border-dashed border-[#44352c]'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="rounded-full bg-[#d4af37]/20 px-2 py-0.5 text-[10px] font-bold text-[#fde68a]">
+                    REWARD · {collectedStampIds.length}/{STAMP_MISSIONS.length}
+                  </span>
+                  <Sparkles className="h-4 w-4 text-amber-400" />
+                </div>
+
+                {/* Visual Leather Bookmark Illustration */}
+                <div className="my-2 flex flex-col items-center justify-center">
+                  <div
+                    className={`relative flex h-20 w-12 flex-col items-center justify-center rounded-t-xl rounded-b-md border-2 shadow-inner ${
+                      collectedStampIds.length >= STAMP_MISSIONS.length
+                        ? 'bg-[#8c4a20] border-[#facc15] text-[#fde68a]'
+                        : 'bg-[#2a201b] border-[#4b3b32] text-[#786b5e]'
+                    }`}
+                  >
+                    <span className="h-2 w-2 rounded-full bg-[#191310] mb-1" />
+                    <span className="font-serif text-[10px] font-bold tracking-widest [writing-mode:vertical-rl]">
+                      독자·딤프치
+                    </span>
+                  </div>
+                </div>
+
+                {collectedStampIds.length >= STAMP_MISSIONS.length ? (
+                  !honorarySigned ? (
+                    <div className="flex gap-1">
+                      <input
+                        type="text"
+                        value={honoraryReaderName}
+                        onChange={(e) => setHonoraryReaderName(e.target.value)}
+                        placeholder="닉네임 각인"
+                        className="w-full min-w-0 rounded-lg bg-black/50 px-2 py-1 text-[11px] text-white placeholder-[#a89888] border border-[#d4af37]/50 focus:outline-none"
+                      />
                       <button
                         type="button"
                         onClick={() => {
-                          setShowStampTourModal(false);
-                          onWalkToStampMission(mission);
+                          const reader =
+                            honoraryReaderName.trim() || '명예 독자';
+                          setGuestbookEntries((prev) => [
+                            {
+                              id: `gb_stamp_${Date.now()}`,
+                              nickname: `🏅 ${reader}`,
+                              message:
+                                '독자서점 5대 시그니처 스탬프 투어(5/5) 완주!',
+                              favBook: heldBook?.title || '독자서점 스탬프 완주',
+                              date: '2026.11.06',
+                            },
+                            ...prev,
+                          ]);
+                          setHonorarySigned(true);
                         }}
-                        className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition whitespace-nowrap ${
-                          isCollected
-                            ? 'bg-[#362a23] text-[#fde68a] hover:bg-[#c85a28] hover:text-white'
-                            : 'bg-[#c85a28] text-white hover:bg-[#e06630] shadow'
-                        }`}
+                        className="shrink-0 rounded-lg bg-[#d4af37] px-2 py-1 text-[10px] font-extrabold text-[#191310]"
                       >
-                        {isCollected
-                          ? '👣 다시 가보기'
-                          : '👣 힌트 장소로 이동'}
+                        각인
                       </button>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* 5/5 Completion Reward: Golden Leather Honorary Reader Bookmark Pass */}
-            {collectedStampIds.length >= STAMP_MISSIONS.length && (
-              <div className="mt-5 rounded-2xl bg-gradient-to-br from-[#3b2314] via-[#2a180d] to-[#1c120b] p-5 border-2 border-[#d4af37] shadow-2xl">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase text-[#fde68a]">
-                    <Sparkles className="h-4 w-4 text-amber-400" />
-                    DOKJA & DIMPCHI HONORARY READER PASS
-                  </span>
-                  <span className="rounded-full bg-[#d4af37] px-2.5 py-0.5 text-[10px] font-extrabold text-[#191310]">
-                    5/5 전 구역 완주
-                  </span>
-                </div>
-                <h3 className="mt-2 font-serif text-lg sm:text-xl font-bold text-white">
-                  🏅 독자서점 & 딤프치 명예 단골 독자 책갈피
-                </h3>
-                <p className="mt-1 text-xs leading-relaxed text-[#f5efe6]/90">
-                  독자서점의 입구 북카트부터 6구 크리스탈 샹들리에, 마스코트 하얀 오리, 추천 도서 테이블, 그리고 안쪽 가죽공방 딤프치까지 모든 시그니처를 발견하셨습니다!
-                </p>
-
-                {!honorarySigned ? (
-                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="text"
-                      value={honoraryReaderName}
-                      onChange={(e) => setHonoraryReaderName(e.target.value)}
-                      placeholder="책갈피에 각인할 닉네임을 입력해 주세요"
-                      className="flex-1 rounded-xl bg-[#191310]/90 px-3 py-2 text-xs text-white placeholder-[#9c8c7c] border border-[#d4af37]/40 focus:outline-none focus:border-[#fde68a]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const reader =
-                          honoraryReaderName.trim() || '명예 단골 독자';
-                        setGuestbookEntries((prev) => [
-                          {
-                            id: `gb_stamp_${Date.now()}`,
-                            nickname: `🏅 ${reader}`,
-                            message:
-                              '독자서점 5대 시그니처 보물찾기 스탬프 투어(5/5)를 모두 완주하고 명예 독자 책갈피를 발급받았습니다!',
-                            favBook: heldBook?.title || '독자서점 5대 시그니처 완주',
-                            date: '2026.11.06',
-                          },
-                          ...prev,
-                        ]);
-                        setHonorarySigned(true);
-                      }}
-                      className="rounded-xl bg-[#d4af37] px-4 py-2 text-xs font-extrabold text-[#191310] hover:bg-[#fde68a] transition"
-                    >
-                      명예 독자 각인 & 방명록에 남기기
-                    </button>
-                  </div>
+                  ) : (
+                    <div className="text-center text-[11px] font-bold text-[#fde68a]">
+                      ✨ {honoraryReaderName.trim() || '명예 독자'} 각인 완료!
+                    </div>
+                  )
                 ) : (
-                  <div className="mt-3 rounded-xl bg-[#191310]/80 p-3 border border-[#d4af37]/50 text-xs text-[#fde68a]">
-                    ✨ <strong>{honoraryReaderName.trim() || '명예 단골 독자'}</strong>님의 명예 독자 각인이 추천 테이블 방명록에 기록되었습니다!
+                  <div className="text-center text-[11px] font-semibold text-[#9c8c7c]">
+                    🔒 5곳 완주 시 가죽 책갈피 발급
                   </div>
                 )}
               </div>
-            )}
+            </div>
 
-            <div className="mt-4 flex items-center justify-between">
-              {collectedStampIds.length > 0 ? (
+            {collectedStampIds.length > 0 && (
+              <div className="mt-3 flex justify-end">
                 <button
                   type="button"
                   onClick={() => {
                     setHonorarySigned(false);
                     onResetStamps();
                   }}
-                  className="text-xs text-[#9c8c7c] underline hover:text-white"
+                  className="text-[11px] text-[#9c8c7c] underline hover:text-white"
                 >
-                  스탬프 투어 처음부터 다시 하기
+                  스탬프 초기화
                 </button>
-              ) : (
-                <span />
-              )}
-              <button
-                type="button"
-                onClick={() => setShowStampTourModal(false)}
-                className="rounded-xl bg-[#2a201b] px-4 py-2 text-xs font-semibold text-[#f8f1e5] hover:bg-[#c85a28] transition"
-              >
-                닫기
-              </button>
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
