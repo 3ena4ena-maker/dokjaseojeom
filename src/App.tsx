@@ -155,7 +155,7 @@ export function App() {
       bookstoreBgm.playStampCollectedChime();
       if (next.length >= STAMP_MISSIONS.length) {
         setToastMessage(
-          `🎉 숨은그림찾기 5개 모두 발견! (${next.length}/${STAMP_MISSIONS.length}) 상단 🏅 스탬프 창에서 ‘명예 독자 책갈피’를 확인해 보세요!`
+          `🎉 숨은그림찾기 5개 모두 발견! (${next.length}/${STAMP_MISSIONS.length}) 서점 방문 시 스티커를 제공해 드립니다!`
         );
       } else {
         setToastMessage(

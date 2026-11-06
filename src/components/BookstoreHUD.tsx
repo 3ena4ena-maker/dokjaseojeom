@@ -1244,11 +1244,11 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               </div>
               <div className="rounded-xl bg-[#241c17] p-3 border border-[#362a23]">
                 <strong className="text-[#f8f1e5]">
-                  3. 의자에 앉기 · 독서 타이머 & 5대 보물찾기
+                  3. 의자에 앉기 · 독서 타이머 & 숨은그림찾기
                 </strong>
                 <p className="mt-1">
-                  • 창가 책상이나 대형 테이블 의자에 앉아 <strong>독서 타이머 & ASMR(빗소리·책장·모닥불)</strong>을 켜고 여유롭게 머물 수 있습니다.
-                  <br />• 서점 곳곳의 <strong>5대 시그니처 보물</strong>을 모두 발견하면 명예 독자 디지털 책갈피가 발급됩니다.
+                  • 창가 책상이나 대형 테이블 의자에 앉아 <strong>독서 타이머 & 통합 사운드</strong>를 켜고 여유롭게 머물 수 있습니다.
+                  <br />• 서점 곳곳의 <strong>숨은그림 5가지</strong>를 모두 찾으면 <strong>서점 방문 시 스티커</strong>를 제공해 드립니다.
                 </p>
               </div>
             </div>
@@ -1665,7 +1665,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                 );
               })}
 
-              {/* 6th Card: Visual Golden Leather Bookmark Reward Card */}
+              {/* 6th Card: Bookstore Visit Sticker Reward Card */}
               <div
                 className={`relative flex flex-col justify-between overflow-hidden rounded-2xl border-2 p-3 transition ${
                   collectedStampIds.length >= STAMP_MISSIONS.length
@@ -1680,64 +1680,41 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                   <Sparkles className="h-4 w-4 text-amber-400" />
                 </div>
 
-                {/* Visual Leather Bookmark Illustration */}
-                <div className="my-2 flex flex-col items-center justify-center">
+                {/* Visual Die-Cut Sticker Pack Illustration */}
+                <div className="my-2 flex items-center justify-center gap-1.5">
                   <div
-                    className={`relative flex h-20 w-12 flex-col items-center justify-center rounded-t-xl rounded-b-md border-2 shadow-inner ${
+                    className={`flex h-16 w-16 flex-col items-center justify-center rounded-full border-4 shadow-md transition ${
                       collectedStampIds.length >= STAMP_MISSIONS.length
-                        ? 'bg-[#8c4a20] border-[#facc15] text-[#fde68a]'
-                        : 'bg-[#2a201b] border-[#4b3b32] text-[#786b5e]'
+                        ? 'bg-[#c85a28] border-white text-white -rotate-6'
+                        : 'bg-[#2a201b] border-[#4b3b32] text-[#786b5e] opacity-65'
                     }`}
                   >
-                    <span className="h-2 w-2 rounded-full bg-[#191310] mb-1" />
-                    <span className="font-serif text-[10px] font-bold tracking-widest [writing-mode:vertical-rl]">
-                      독자·딤프치
+                    <span className="text-lg leading-none">🦆</span>
+                    <span className="mt-0.5 font-serif text-[9px] font-black tracking-tight">
+                      독자서점
+                    </span>
+                    <span className="text-[8px] font-bold text-[#fde68a]">
+                      STICKER
                     </span>
                   </div>
                 </div>
 
                 {collectedStampIds.length >= STAMP_MISSIONS.length ? (
-                  !honorarySigned ? (
-                    <div className="flex gap-1">
-                      <input
-                        type="text"
-                        value={honoraryReaderName}
-                        onChange={(e) => setHonoraryReaderName(e.target.value)}
-                        placeholder="닉네임 각인"
-                        className="w-full min-w-0 rounded-lg bg-black/50 px-2 py-1 text-[11px] text-white placeholder-[#a89888] border border-[#d4af37]/50 focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const reader =
-                            honoraryReaderName.trim() || '명예 독자';
-                          setGuestbookEntries((prev) => [
-                            {
-                              id: `gb_stamp_${Date.now()}`,
-                              nickname: `🏅 ${reader}`,
-                              message:
-                                '독자서점 숨은그림찾기 5개(5/5) 모두 발견 완주!',
-                              favBook:
-                                heldBook?.title || '독자서점 숨은그림찾기 완주',
-                              date: '2026.11.06',
-                            },
-                            ...prev,
-                          ]);
-                          setHonorarySigned(true);
-                        }}
-                        className="shrink-0 rounded-lg bg-[#d4af37] px-2 py-1 text-[10px] font-extrabold text-[#191310]"
-                      >
-                        각인
-                      </button>
+                  <div className="rounded-xl bg-[#d4af37]/20 px-2 py-1.5 text-center border border-[#d4af37]/50">
+                    <div className="text-[11px] font-extrabold text-[#fde68a]">
+                      🎁 서점 방문 시 스티커 제공!
                     </div>
-                  ) : (
-                    <div className="text-center text-[11px] font-bold text-[#fde68a]">
-                      ✨ {honoraryReaderName.trim() || '명예 독자'} 각인 완료!
+                    <div className="text-[9px] text-[#e5d5c3]">
+                      방문 시 이 화면을 보여주세요
                     </div>
-                  )
+                  </div>
                 ) : (
-                  <div className="text-center text-[11px] font-semibold text-[#9c8c7c]">
-                    🔒 5개 모두 찾으면 책갈피 발급
+                  <div className="text-center text-[11px] font-semibold leading-snug text-[#cbbba8]">
+                    🔒 5개 모두 찾으면
+                    <br />
+                    <span className="text-[#fde68a] font-bold">
+                      서점 방문 시 스티커 제공
+                    </span>
                   </div>
                 )}
               </div>
