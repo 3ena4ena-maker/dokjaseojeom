@@ -45,6 +45,8 @@ export function App() {
   const [cameraDistance, setCameraDistance] = useState<number>(2.95);
   const [actionState, setActionState] = useState<CharacterActionState>('IDLE');
   const [isSeated, setIsSeated] = useState<boolean>(false);
+  const [isPositionLocked, setIsPositionLocked] = useState<boolean>(false);
+  const isPositionLockedRef = useRef<boolean>(false);
   const [activeSeat, setActiveSeat] = useState<SeatObjectData | null>(null);
   const [heldBook, setHeldBook] = useState<BookItem | null>(null);
   const [activeGenreShelf, setActiveGenreShelf] =
@@ -84,7 +86,7 @@ export function App() {
     }
   });
   const [toastMessage, setToastMessage] = useState<string | null>(
-    '독자서점 외부 도로에 도착했습니다. 계단과 열린 출입문을 통해 서점 안으로 걸어 들어가 보세요!'
+    '독자서점에 오신 것을 환영합니다. 문 안으로 들어와 편하게 둘러보세요.'
   );
 
   // Sync character Z coordinate to spatial BGM engine (soft/muffled on road -> warm fade-in inside store)
@@ -121,9 +123,7 @@ export function App() {
     setBgmPlaying(nextPlaying);
     setAsmrLevels(bookstoreBgm.getAsmrLevels());
     setToastMessage(
-      nextPlaying
-        ? '🔊 서점 배경음악 & ASMR(빗소리·책장·모닥불)을 함께 켰습니다.'
-        : '🔇 서점 배경음악 & ASMR을 모두 껐습니다.'
+      nextPlaying ? '🔊 서점 사운드를 켰습니다.' : '🔇 서점 사운드를 껐습니다.'
     );
   }, []);
 
@@ -243,10 +243,53 @@ export function App() {
     setActionState('IDLE');
   }, [activeSeat]);
 
+  // Smoothly turn character & camera gaze in place toward a world [targetX, targetZ] without moving position
+  const rotateGazeInPlaceToward = useCallback(
+    (targetX: number, targetZ: number) => {
+      const [cx, , cz] = positionRef.current;
+      const dx = targetX - cx;
+      const dz = targetZ - cz;
+      if (Math.hypot(dx, dz) > 0.04) {
+        const facingY = Math.atan2(dx, dz);
+        rotationYRef.current = facingY;
+      }
+    },
+    []
+  );
+
+  // Toggle In-Place Position Lock when clicking on the character itself (`자기 클릭`)
+  const handleTogglePositionLock = useCallback(() => {
+    navPathRef.current = [];
+    pendingArrivalRef.current = null;
+    handleClearNavVisuals();
+    if (actionState === 'WALKING') {
+      setActionState('IDLE');
+    }
+    setIsPositionLocked((prev) => {
+      const next = !prev;
+      isPositionLockedRef.current = next;
+      return next;
+    });
+  }, [actionState, handleClearNavVisuals]);
+
   // Walk to a target [x, z] using A* obstacle avoidance and optionally run an action on arrival
   const walkToAndExecute = useCallback(
     (targetX: number, targetZ: number, onArrive?: () => void) => {
       if (actionState === 'INTERACTING') return;
+
+      // When locked in place (`자기 클릭 고정`), stay anchored at the current spot and only rotate gaze toward target!
+      if (isPositionLockedRef.current) {
+        navPathRef.current = [];
+        pendingArrivalRef.current = null;
+        handleClearNavVisuals();
+        if (onArrive) {
+          onArrive();
+        } else {
+          setActionState(isSeated ? 'SITTING' : 'IDLE');
+        }
+        rotateGazeInPlaceToward(targetX, targetZ);
+        return;
+      }
 
       let startX = positionRef.current[0];
       let startZ = positionRef.current[2];
@@ -268,6 +311,7 @@ export function App() {
         if (onArrive) {
           onArrive();
         } else {
+          rotateGazeInPlaceToward(targetX, targetZ);
           setActionState('IDLE');
         }
         return;
@@ -282,7 +326,13 @@ export function App() {
       setNavPathVisual(path);
       setActionState('WALKING');
     },
-    [actionState, isSeated, activeSeat, handleClearNavVisuals]
+    [
+      actionState,
+      isSeated,
+      activeSeat,
+      handleClearNavVisuals,
+      rotateGazeInPlaceToward,
+    ]
   );
 
   // Triggered automatically when the character crosses from the outdoor road through the '독자' entrance door
@@ -292,9 +342,7 @@ export function App() {
     cameraDistanceRef.current = 3.1;
     setCameraDistance(3.1);
     bookstoreBgm.triggerEnterStoreSwell();
-    showToast(
-      '✨ 독자서점 내부로 들어왔습니다! 잔잔한 재즈 피아노 선율과 함께 서점 공간이 한눈에 펼쳐집니다.'
-    );
+    showToast('✨ 독자서점 내부로 들어왔습니다.');
   }, [showToast]);
 
   // Quick button: walk from road outside through the open door into the entrance hall & show panoramic interior view
@@ -304,7 +352,7 @@ export function App() {
     setInspectingBook(null);
     setInspectingTable(null);
     setInspectingStory(null);
-    showToast('🚪 도로에서 계단을 올라 독자서점 출입문 안으로 들어갑니다.');
+    showToast('🚪 독자서점 안으로 들어갑니다.');
     walkToAndExecute(0.15, 4.95, () => {
       rotationYRef.current = Math.PI;
       cameraYawRef.current = 0;
@@ -326,7 +374,7 @@ export function App() {
     cameraPitchRef.current = 0.28;
     cameraDistanceRef.current = 3.1;
     setCameraDistance(3.1);
-    showToast('👁️ 독자서점 내부가 한눈에 보이도록 시점을 정렬했습니다.');
+    showToast('👁️ 내부 전체 시점으로 정렬했습니다.');
   }, [handleEnterStoreFromRoad, showToast]);
 
   // Floor Click (Roadview-style click movement)
@@ -461,12 +509,10 @@ export function App() {
         if (andReadAfter && heldBook) {
           setActionState('READING');
           setIsReadingModalOpen(true);
-          showToast(
-            `🪑 ${seat.name}에 앉아 『${heldBook.title}』 독서를 시작합니다.`
-          );
+          showToast(`🪑 편하게 앉아 『${heldBook.title}』을(를) 읽습니다.`);
         } else {
           setActionState('SITTING');
-          showToast(`🪑 ${seat.name}에 앉았습니다. 독서 타이머 & ASMR로 여유롭게 머물러 보세요!`);
+          showToast(`🪑 ${seat.name}에 앉았습니다. 편하게 책을 읽어보세요.`);
         }
         unlockStampByLinkedId(seat.id);
       });
@@ -704,7 +750,8 @@ export function App() {
             toastMessage.startsWith('🎉') ||
             toastMessage.startsWith('🔔') ||
             toastMessage.startsWith('🔊') ||
-            toastMessage.startsWith('🔇')
+            toastMessage.startsWith('🔇') ||
+            toastMessage.startsWith('📌')
               ? 'block'
               : 'hidden sm:block'
           }`}
@@ -752,6 +799,8 @@ export function App() {
           isSeated={isSeated}
           heldBook={heldBook}
           interactionProgressRef={interactionProgressRef}
+          isPositionLocked={isPositionLocked}
+          onTogglePositionLock={handleTogglePositionLock}
         />
 
         <BookstoreEnvironment3D

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -11,6 +11,8 @@ interface Character3DProps {
   isSeated: boolean;
   heldBook: BookItem | null;
   interactionProgressRef: React.MutableRefObject<number>;
+  isPositionLocked?: boolean;
+  onTogglePositionLock?: () => void;
 }
 
 export const Character3D: React.FC<Character3DProps> = ({
@@ -20,7 +22,10 @@ export const Character3D: React.FC<Character3DProps> = ({
   isSeated,
   heldBook,
   interactionProgressRef,
+  isPositionLocked = false,
+  onTogglePositionLock,
 }) => {
+  const [hoveredSelf, setHoveredSelf] = useState(false);
   const rootRef = useRef<THREE.Group>(null);
   const pelvisRef = useRef<THREE.Group>(null);
   const torsoRef = useRef<THREE.Group>(null);
@@ -307,15 +312,34 @@ export const Character3D: React.FC<Character3DProps> = ({
       scale={0.76}
       position={[0.1, 0, 5.45]}
       rotation={[0, Math.PI, 0]}
+      onClick={(e) => {
+        e.stopPropagation();
+        onTogglePositionLock?.();
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        setHoveredSelf(true);
+      }}
+      onPointerOut={() => setHoveredSelf(false)}
     >
-      {/* Ground shadow & subtle position indicator */}
+      {/* Ground shadow & subtle position indicator (Glows sky-blue when locked in place!) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
         <circleGeometry args={[0.28, 32]} />
         <meshBasicMaterial color="#090807" transparent opacity={0.45} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 0]}>
-        <ringGeometry args={[0.27, 0.31, 32]} />
-        <meshBasicMaterial color="#e09f3e" transparent opacity={0.45} />
+        <ringGeometry args={[0.27, isPositionLocked ? 0.35 : 0.31, 32]} />
+        <meshBasicMaterial
+          color={
+            isPositionLocked
+              ? '#38bdf8'
+              : hoveredSelf
+              ? '#fde047'
+              : '#e09f3e'
+          }
+          transparent
+          opacity={isPositionLocked ? 0.9 : hoveredSelf ? 0.75 : 0.45}
+        />
       </mesh>
 
       {/* Pelvis / Root of articulated skeleton */}
@@ -552,45 +576,62 @@ export const Character3D: React.FC<Character3DProps> = ({
         </group>
       </group>
 
-      {/* Subtle floating badge over character head when reading, sitting, or holding a book */}
-      {(actionState !== 'IDLE' && actionState !== 'WALKING') || heldBook ? (
+      {/* Floating rectangular box over character head when position-locked, hovered, reading, sitting, or holding a book */}
+      {isPositionLocked ||
+      hoveredSelf ||
+      (actionState !== 'IDLE' && actionState !== 'WALKING') ||
+      heldBook ? (
         <Html
           position={[0, isSeated ? 1.48 : 1.75, 0]}
           center
           zIndexRange={[5, 0]}
         >
-          <div className="pointer-events-none flex items-center gap-1 whitespace-nowrap rounded-full bg-[#1c1613]/90 px-2.5 py-0.5 text-[11px] font-medium text-[#fde68a] shadow-md border border-[#d97736]/40 backdrop-blur-sm">
-            {actionState === 'READING' && (
+          <div
+            className={`flex items-center gap-2 whitespace-nowrap rounded-[3px] px-2.5 py-1 text-[11px] font-medium shadow-md border backdrop-blur-sm ${
+              isPositionLocked
+                ? 'pointer-events-auto bg-[#18181b]/95 text-[#f4f4f5] border-[#52525b]'
+                : 'pointer-events-none bg-[#1c1613]/90 text-[#fde68a] border-[#d97736]/40'
+            }`}
+          >
+            {isPositionLocked ? (
               <>
-                <span>📖</span>
-                <span>『{heldBook?.title}』 읽는 중...</span>
+                <span>제자리 고정중</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTogglePositionLock?.();
+                  }}
+                  className="rounded-[2px] bg-[#3f3f46] px-2 py-0.5 text-[10px] font-semibold text-white border border-[#71717a] hover:bg-[#52525b] transition-colors cursor-pointer"
+                >
+                  설정 해제
+                </button>
               </>
-            )}
-            {actionState === 'SITTING' && (
+            ) : hoveredSelf ? (
+              <span>클릭 시 제자리 고정</span>
+            ) : (
               <>
-                <span>🪑</span>
-                <span>
-                  {heldBook
-                    ? `앉아서 『${heldBook.title}』 감상 중`
-                    : '앉아서 쉬는 중'}
-                </span>
-              </>
-            )}
-            {actionState === 'INTERACTING' && (
-              <>
-                <span>✨</span>
-                <span>책을 꺼내는 중...</span>
-              </>
-            )}
-            {(actionState === 'IDLE' || actionState === 'WALKING') &&
-              heldBook && (
-                <>
-                  <span>📕</span>
-                  <span className="max-w-[140px] truncate">
-                    {heldBook.title}
+                {actionState === 'READING' && (
+                  <span>『{heldBook?.title}』 읽는 중...</span>
+                )}
+                {actionState === 'SITTING' && (
+                  <span>
+                    {heldBook
+                      ? `앉아서 『${heldBook.title}』 감상 중`
+                      : '앉아서 쉬는 중'}
                   </span>
-                </>
-              )}
+                )}
+                {actionState === 'INTERACTING' && (
+                  <span>책을 꺼내는 중...</span>
+                )}
+                {(actionState === 'IDLE' || actionState === 'WALKING') &&
+                  heldBook && (
+                    <span className="max-w-[140px] truncate">
+                      {heldBook.title}
+                    </span>
+                  )}
+              </>
+            )}
           </div>
         </Html>
       ) : null}

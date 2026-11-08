@@ -274,6 +274,7 @@ export function findNavigationPath(
 }
 
 // Camera position computation: once inside the bookstore (Z <= 6.35), strictly keep camera inside the interior walls
+// while preserving the exact horizontal & vertical ray direction from target to camera so in-place gaze rotation never gets stuck in corners!
 export function computeSafeCameraPosition(
   targetX: number,
   targetY: number,
@@ -285,25 +286,47 @@ export function computeSafeCameraPosition(
 ): [number, number, number] {
   const isCharacterOutside = targetZ > 6.35;
 
-  // Only allow outdoor camera coordinates before the character enters the bookstore entrance
-  if (isCharacterOutside) {
-    const clampedX = Math.max(-4.8, Math.min(4.8, desiredCamX));
-    const clampedY = Math.max(0.55, Math.min(4.2, desiredCamY));
-    const clampedZ = Math.max(6.45, Math.min(12.2, desiredCamZ));
-    return [clampedX, clampedY, clampedZ];
+  const minX = isCharacterOutside ? -4.8 : -4.18;
+  const maxX = isCharacterOutside ? 4.8 : 3.88;
+  const minZ = isCharacterOutside ? 6.45 : -6.22;
+  const maxZ = isCharacterOutside ? 12.2 : 6.15;
+  const minY = 0.55;
+  const maxY = isCharacterOutside ? 4.2 : 3.15;
+
+  // Clamp anchor slightly inside bounds so ray scaling always works cleanly
+  const anchorX = Math.max(minX + 0.05, Math.min(maxX - 0.05, targetX));
+  const anchorY = Math.max(minY + 0.05, Math.min(maxY - 0.05, targetY));
+  const anchorZ = Math.max(minZ + 0.05, Math.min(maxZ - 0.05, targetZ));
+
+  const dx = desiredCamX - anchorX;
+  const dy = desiredCamY - anchorY;
+  const dz = desiredCamZ - anchorZ;
+
+  let t = 1.0;
+
+  if (dx > 0.0001 && anchorX + dx * t > maxX) {
+    t = Math.min(t, (maxX - anchorX) / dx);
+  } else if (dx < -0.0001 && anchorX + dx * t < minX) {
+    t = Math.min(t, (minX - anchorX) / dx);
   }
 
-  // Once inside the entrance (targetZ <= 6.35), NEVER allow the camera to exit through any wall or the entrance door
-  const roomMinX = -4.12;
-  const roomMaxX = 3.82;
-  const roomMinZ = -6.15;
-  const roomMaxZ = 6.12; // Strictly inside the entrance door & storefront wall
-  const roomMaxY = 3.15; // Strictly below the terracotta ceiling
-  const roomMinY = 0.55;
+  if (dz > 0.0001 && anchorZ + dz * t > maxZ) {
+    t = Math.min(t, (maxZ - anchorZ) / dz);
+  } else if (dz < -0.0001 && anchorZ + dz * t < minZ) {
+    t = Math.min(t, (minZ - anchorZ) / dz);
+  }
 
-  const finalX = Math.max(roomMinX, Math.min(roomMaxX, desiredCamX));
-  const finalY = Math.max(roomMinY, Math.min(roomMaxY, desiredCamY));
-  const finalZ = Math.max(roomMinZ, Math.min(roomMaxZ, desiredCamZ));
+  if (dy > 0.0001 && anchorY + dy * t > maxY) {
+    t = Math.min(t, (maxY - anchorY) / dy);
+  } else if (dy < -0.0001 && anchorY + dy * t < minY) {
+    t = Math.min(t, (minY - anchorY) / dy);
+  }
+
+  t = Math.max(0.08, Math.min(1.0, t));
+
+  const finalX = anchorX + dx * t;
+  const finalY = anchorY + dy * t;
+  const finalZ = anchorZ + dz * t;
 
   return [finalX, finalY, finalZ];
 }

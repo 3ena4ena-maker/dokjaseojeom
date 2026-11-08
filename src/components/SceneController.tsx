@@ -101,15 +101,19 @@ export const SceneController: React.FC<SceneControllerProps> = ({
   // Pointer drag state with deadzone + two-finger pinch-to-zoom support
   const isPointerDownRef = useRef(false);
   const isDraggingRef = useRef(false);
+  const didDragRef = useRef(false);
   const isPinchingRef = useRef(false);
   const pinchLastDistRef = useRef<number>(0);
   const pointerDownStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const lastPointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const manualLookHoldTimerRef = useRef<number>(0);
 
-  // Damped yaw/pitch targets for gentle mouse/touch look
+  // Damped yaw/pitch targets & last-synced orientation refs so manual gaze NEVER snaps back
   const targetCameraYawRef = useRef<number>(cameraYawRef.current);
   const targetCameraPitchRef = useRef<number>(cameraPitchRef.current);
+  const lastSyncedRotationYRef = useRef<number>(rotationYRef.current);
+  const lastSyncedCameraYawRef = useRef<number>(cameraYawRef.current);
+  const lastSyncedCameraPitchRef = useRef<number>(cameraPitchRef.current);
 
   const smoothLookAtRef = useRef(new THREE.Vector3(0.15, 1.32, 7.8));
   const smoothCamPosRef = useRef(new THREE.Vector3(0.15, 2.55, 11.8));
@@ -171,9 +175,10 @@ export const SceneController: React.FC<SceneControllerProps> = ({
 
     const onPointerDown = (e: PointerEvent) => {
       if (isPinchingRef.current) return;
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 2) return;
       isPointerDownRef.current = true;
       isDraggingRef.current = false;
+      didDragRef.current = false;
       pointerDownStartRef.current = { x: e.clientX, y: e.clientY };
       lastPointerRef.current = { x: e.clientX, y: e.clientY };
       targetCameraYawRef.current = cameraYawRef.current;
@@ -186,38 +191,59 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       const totalDx = e.clientX - pointerDownStartRef.current.x;
       const totalDy = e.clientY - pointerDownStartRef.current.y;
 
-      // Require at least 7px movement before treating as a camera drag
+      // Require only 4px movement before treating as a smooth camera gaze drag
       if (!isDraggingRef.current) {
-        if (Math.hypot(totalDx, totalDy) < 7) return;
+        if (Math.hypot(totalDx, totalDy) < 4) return;
         isDraggingRef.current = true;
+        didDragRef.current = true;
         lastPointerRef.current = { x: e.clientX, y: e.clientY };
-        return;
       }
 
       const dx = e.clientX - lastPointerRef.current.x;
       const dy = e.clientY - lastPointerRef.current.y;
       lastPointerRef.current = { x: e.clientX, y: e.clientY };
 
-      // On mobile touch screens (narrower viewport), use a moderately faster sensitivity
-      // (~1.85x) so a single comfortable thumb swipe turns ~40-45° without feeling sluggish or dizzying
+      // Smooth, natural sensitivity so rotating gaze 90~180 deg in place feels effortless
       const isTouch = e.pointerType === 'touch' || window.innerWidth < 768;
-      const yawSensitivity = isTouch ? 0.0037 : 0.0022;
-      const pitchSensitivity = isTouch ? 0.0024 : 0.0017;
+      const yawSensitivity = isTouch ? 0.0058 : 0.0052;
+      const pitchSensitivity = isTouch ? 0.0038 : 0.0034;
 
       targetCameraYawRef.current = normalizeAngle(
         targetCameraYawRef.current - dx * yawSensitivity
       );
       targetCameraPitchRef.current = Math.max(
-        0.12,
-        Math.min(1.05, targetCameraPitchRef.current + dy * pitchSensitivity)
+        -0.22,
+        Math.min(1.08, targetCameraPitchRef.current + dy * pitchSensitivity)
       );
 
-      manualLookHoldTimerRef.current = 1.8;
+      // Keep character facing aligned with the new in-place gaze so the camera never snaps back!
+      if (navPathRef.current.length === 0) {
+        rotationYRef.current = normalizeAngle(
+          targetCameraYawRef.current + Math.PI
+        );
+        lastSyncedRotationYRef.current = rotationYRef.current;
+      }
+
+      manualLookHoldTimerRef.current = 0.6;
     };
 
     const onPointerUp = () => {
       isPointerDownRef.current = false;
       isDraggingRef.current = false;
+    };
+
+    // Suppress R3F 3D object clicks when the user was dragging the mouse to rotate their gaze in place!
+    const onClickCapture = (e: MouseEvent) => {
+      if (didDragRef.current) {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        didDragRef.current = false;
+      }
+    };
+
+    const onContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
     };
 
     // Two-finger pinch-to-zoom for mobile / touch screens
@@ -248,8 +274,6 @@ export const SceneController: React.FC<SceneControllerProps> = ({
         const deltaDist = dist - pinchLastDistRef.current;
         pinchLastDistRef.current = dist;
 
-        // Spreading fingers apart (deltaDist > 0) zooms in (smaller distance);
-        // pinching fingers together (deltaDist < 0) zooms out (up to 4.2m indoor overview)
         const nextDist = Math.max(
           0.9,
           Math.min(4.2, cameraDistanceRef.current - deltaDist * 0.011)
@@ -278,21 +302,33 @@ export const SceneController: React.FC<SceneControllerProps> = ({
     dom.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('click', onClickCapture, { capture: true });
+    dom.addEventListener('contextmenu', onContextMenu);
     dom.addEventListener('touchstart', onTouchStart, { passive: false });
     dom.addEventListener('touchmove', onTouchMove, { passive: false });
-    window.addEventListener('touchend', onTouchEnd);
+    dom.addEventListener('touchend', onTouchEnd);
     dom.addEventListener('wheel', onWheel, { passive: false });
 
     return () => {
       dom.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('click', onClickCapture, { capture: true });
+      dom.removeEventListener('contextmenu', onContextMenu);
       dom.removeEventListener('touchstart', onTouchStart);
       dom.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
+      dom.removeEventListener('touchend', onTouchEnd);
       dom.removeEventListener('wheel', onWheel);
     };
-  }, [gl, cameraYawRef, cameraPitchRef, cameraDistanceRef, onSyncCameraDistance]);
+  }, [
+    gl,
+    cameraYawRef,
+    cameraPitchRef,
+    cameraDistanceRef,
+    rotationYRef,
+    navPathRef,
+    onSyncCameraDistance,
+  ]);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.1);
@@ -489,43 +525,55 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       wasOutsideRef.current = true;
     }
 
-    // 4. Gentle, Velocity-Capped Camera Gaze Alignment
-    if (isDraggingRef.current || manualLookHoldTimerRef.current > 0) {
-      cameraYawRef.current = lerpAngleShortest(
-        cameraYawRef.current,
-        targetCameraYawRef.current,
-        Math.min(1, dt * 9.5)
-      );
-      cameraPitchRef.current +=
-        (targetCameraPitchRef.current - cameraPitchRef.current) *
-        Math.min(1, dt * 9.5);
-
-      if (!isSeated && navPathRef.current.length === 0) {
-        rotationYRef.current = stepAngleSmoothCapped(
-          rotationYRef.current,
-          normalizeAngle(targetCameraYawRef.current + Math.PI),
-          5.5,
-          3.2,
-          dt
-        );
-      }
-    } else {
-      const desiredCameraYaw = normalizeAngle(rotationYRef.current - Math.PI);
-      const responsiveness = actionState === 'WALKING' ? 2.2 : 1.8;
-      const maxYawSpeed = actionState === 'WALKING' ? 1.15 : 0.95;
-
-      cameraYawRef.current = stepAngleSmoothCapped(
-        cameraYawRef.current,
-        desiredCameraYaw,
-        responsiveness,
-        maxYawSpeed,
-        dt
-      );
+    // 4. Smooth In-Place Gaze Rotation & Permanent Gaze Retention (Never snaps back when stationary!)
+    // Detect if external code (e.g. reset camera button or entering store) explicitly set cameraYawRef / cameraPitchRef
+    if (
+      Math.abs(
+        normalizeAngle(cameraYawRef.current - lastSyncedCameraYawRef.current)
+      ) > 0.001
+    ) {
       targetCameraYawRef.current = cameraYawRef.current;
     }
+    if (
+      Math.abs(cameraPitchRef.current - lastSyncedCameraPitchRef.current) >
+      0.001
+    ) {
+      targetCameraPitchRef.current = cameraPitchRef.current;
+    }
+
+    // Detect if character rotationYRef was changed by walking or arriving at a shelf/table/seat
+    if (
+      !isDraggingRef.current &&
+      manualLookHoldTimerRef.current <= 0 &&
+      Math.abs(
+        normalizeAngle(rotationYRef.current - lastSyncedRotationYRef.current)
+      ) > 0.001
+    ) {
+      targetCameraYawRef.current = normalizeAngle(
+        rotationYRef.current - Math.PI
+      );
+      lastSyncedRotationYRef.current = rotationYRef.current;
+    } else {
+      lastSyncedRotationYRef.current = rotationYRef.current;
+    }
+
+    const isManualLooking =
+      isDraggingRef.current || manualLookHoldTimerRef.current > 0;
+    const lookLerpRate = isManualLooking ? 18.0 : 8.5;
+
+    cameraYawRef.current = lerpAngleShortest(
+      cameraYawRef.current,
+      targetCameraYawRef.current,
+      Math.min(1, dt * lookLerpRate)
+    );
+    cameraPitchRef.current +=
+      (targetCameraPitchRef.current - cameraPitchRef.current) *
+      Math.min(1, dt * lookLerpRate);
+
+    lastSyncedCameraYawRef.current = cameraYawRef.current;
+    lastSyncedCameraPitchRef.current = cameraPitchRef.current;
 
     // Aim lookTarget slightly above the scaled-down character (charY + 1.32)
-    // so the character stays compact in the lower third and the bookstore interior fills the screen!
     const lookTargetY = charY + (isSeated ? 0.92 : 1.32);
     const camDist = Math.max(0.9, Math.min(4.2, cameraDistanceRef.current));
     const pitch = cameraPitchRef.current;
@@ -562,26 +610,25 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       }
     }
 
-    // Soft, cushioned camera position damping (slightly more responsive during manual look)
-    const isManualLooking =
-      isDraggingRef.current || manualLookHoldTimerRef.current > 0;
-    const camLerp = Math.min(1, dt * (isManualLooking ? 6.4 : 4.8));
+    // Use matching lerp factor for both camera position and lookAt target so the viewing ray direction never warps
+    const camLerp = Math.min(1, dt * (isManualLooking ? 16.0 : 7.5));
     smoothCamPosRef.current.lerp(
       new THREE.Vector3(safeCamX, safeCamY, safeCamZ),
       camLerp
     );
 
-    const viewFwdX = -Math.sin(yaw);
-    const viewFwdZ = -Math.cos(yaw);
-    const lookAheadDist =
-      charZ > 3.2 && charZ <= 6.35 && Math.abs(yaw) < 0.7 ? 1.1 : 0.65;
+    const viewFwdX = -Math.sin(yaw) * Math.cos(pitch);
+    const viewFwdY = -Math.sin(pitch);
+    const viewFwdZ = -Math.cos(yaw) * Math.cos(pitch);
+    const lookAheadDist = 0.75;
 
     const lookTargetX = charX + viewFwdX * lookAheadDist;
+    const lookTargetYWithPitch = lookTargetY + viewFwdY * lookAheadDist;
     const lookTargetZ = charZ + viewFwdZ * lookAheadDist;
 
     smoothLookAtRef.current.lerp(
-      new THREE.Vector3(lookTargetX, lookTargetY, lookTargetZ),
-      Math.min(1, dt * (isManualLooking ? 6.8 : 5.2))
+      new THREE.Vector3(lookTargetX, lookTargetYWithPitch, lookTargetZ),
+      camLerp
     );
 
     camera.position.copy(smoothCamPosRef.current);
