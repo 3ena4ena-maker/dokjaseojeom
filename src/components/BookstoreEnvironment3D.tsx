@@ -19,6 +19,7 @@ import {
   WaypointNode,
 } from '../types';
 import { isPointWalkable } from '../systems/collisionAndNav';
+import { BookshopOwner3D } from './BookshopOwner3D';
 
 interface BookstoreEnvironment3DProps {
   characterPos: [number, number, number];
@@ -39,6 +40,10 @@ interface BookstoreEnvironment3DProps {
   onSelectWaypoint: (wp: WaypointNode) => void;
   collectedStampIds: string[];
   onFindHiddenStamp: (missionId: string) => void;
+  isOwnerPresent: boolean;
+  isOwnerTalking: boolean;
+  selectedOwnerQuestionIdx: number | null;
+  onOpenOwnerTalk: () => void;
 }
 
 interface DecorativeBookSpine {
@@ -66,6 +71,10 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
   onSelectWaypoint,
   collectedStampIds,
   onFindHiddenStamp,
+  isOwnerPresent,
+  isOwnerTalking,
+  selectedOwnerQuestionIdx,
+  onOpenOwnerTalk,
 }) => {
   const [hoveredBookId, setHoveredBookId] = useState<string | null>(null);
   const [hoveredSeatId, setHoveredSeatId] = useState<string | null>(null);
@@ -76,6 +85,10 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
   const [ownerLibraryNoticeOpen, setOwnerLibraryNoticeOpen] =
     useState<boolean>(false);
   const [hoveredOwnerLibrary, setHoveredOwnerLibrary] =
+    useState<boolean>(false);
+  const [ownerDisplayNoticeOpen, setOwnerDisplayNoticeOpen] =
+    useState<boolean>(false);
+  const [hoveredOwnerDisplay, setHoveredOwnerDisplay] =
     useState<boolean>(false);
   const [floorCursor, setFloorCursor] = useState<{
     x: number;
@@ -497,8 +510,14 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           continue;
         }
         const yBase = shelfHeights[sIdx];
+        const bayMid = (zStart + zEnd) * 0.5;
         let zCursor = zStart + 0.04;
         while (zCursor < zEnd - 0.05) {
+          // Leave a clean face-out display slot on 3rd shelf (sIdx === 2) in the 5 front bays for each genre's 1 representative book
+          if (sIdx === 2 && zStart > 0.5 && Math.abs(zCursor - bayMid) < 0.16) {
+            zCursor += 0.04;
+            continue;
+          }
           if (rand() < 0.14) {
             zCursor += 0.08 + rand() * 0.12;
             continue;
@@ -1271,8 +1290,8 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
 
         {hoveredStoryId === 'story_chandelier' && (
           <Html position={[0, -0.58, 0]} center zIndexRange={[5, 0]}>
-            <div className="pointer-events-none whitespace-nowrap rounded-md bg-[#c85a28] px-2.5 py-1 text-xs font-medium text-white shadow-md">
-              ✨ [클릭 / E] 6구 골드 크리스탈 샹들리에 & 테라코타 천장
+            <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/45 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
+              오렌지 천장과 크리스탈 샹들리에
             </div>
           </Html>
         )}
@@ -1373,16 +1392,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
         </mesh>
 
         {/* Open Vintage Distressed White/Wood Double Entrance Doors (Walkable Open Passage!) */}
-        <group
-          position={[0.15, 0, 0]}
-          onClick={(e) => {
-            e.stopPropagation();
-            const st = SPACE_STORIES.find((s) => s.id === 'story_entrance');
-            if (st) onSelectStory(st);
-          }}
-          onPointerOver={() => setHoveredStoryId('story_entrance')}
-          onPointerOut={() => setHoveredStoryId(null)}
-        >
+        <group position={[0.15, 0, 0]}>
           {/* Left & Right Door Frame Posts */}
           <mesh position={[-0.82, 1.38, 0]}>
             <boxGeometry args={[0.1, 2.76, 0.16]} />
@@ -1434,18 +1444,6 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
               <meshStandardMaterial color="#d9a066" roughness={0.7} />
             </mesh>
           </group>
-
-          <Html position={[0, 2.62, 0.12]} center zIndexRange={[5, 0]}>
-            <div
-              className={`pointer-events-none rounded-lg px-2.5 py-0.5 text-[11px] font-serif tracking-widest transition-all ${
-                hoveredStoryId === 'story_entrance'
-                  ? 'bg-[#c85a28] text-white shadow-lg'
-                  : 'bg-[#1c1613]/85 text-[#f5efe6] border border-[#d4af37]/40'
-              }`}
-            >
-              독 자 (DOKJA) · 딤프치 출입문
-            </div>
-          </Html>
         </group>
 
         {/* ============================================================
@@ -1882,7 +1880,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
 
               {hoveredTableId === deskData.id && (
                 <Html position={[0, 1.25, 0]} center zIndexRange={[5, 0]}>
-                  <div className="pointer-events-none whitespace-nowrap rounded-[3px] bg-[#c85a28] px-2.5 py-1 text-[11px] font-medium text-white shadow-md">
+                  <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/45 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
                     창가 독서 책상
                   </div>
                 </Html>
@@ -1955,7 +1953,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
               ))}
               {hoveredSeatId === chairData.id && (
                 <Html position={[0, 1.05, 0]} center zIndexRange={[5, 0]}>
-                  <div className="pointer-events-none whitespace-nowrap rounded-[3px] bg-[#c85a28] px-2.5 py-1 text-[11px] font-medium text-white shadow-md">
+                  <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/45 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
                     창가 독서 의자에 앉기
                   </div>
                 </Html>
@@ -1991,43 +1989,91 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           </mesh>
         ))}
 
-        {/* Rounded-Rectangle Wall Mirror & Small Shadowbox Frame on Left End (113957_81.jpg) */}
-        <group position={[-4.36, 1.82, 5.05]}>
+        {/* Rounded-Rectangle Wall Mirror & Small Duck Shadowbox Frame on Top (media_1794279939763_57a87c53.jpg) */}
+        <group position={[-4.36, 1.76, 5.06]}>
           <mesh>
-            <boxGeometry args={[0.08, 0.48, 0.34]} />
-            <meshStandardMaterial color="#a67c52" roughness={0.6} />
+            <boxGeometry args={[0.08, 0.44, 0.34]} />
+            <meshStandardMaterial color="#b4834e" roughness={0.6} />
           </mesh>
           <mesh position={[0.042, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-            <planeGeometry args={[0.28, 0.42]} />
+            <planeGeometry args={[0.28, 0.38]} />
             <meshStandardMaterial
               color="#94a3b8"
               metalness={0.85}
               roughness={0.12}
             />
           </mesh>
+          {/* Small Wooden Shadowbox with White Duck Figurine Sitting on Top of Mirror */}
+          <group position={[0, 0.32, 0]}>
+            <mesh>
+              <boxGeometry args={[0.07, 0.19, 0.26]} />
+              <meshStandardMaterial color="#b4834e" roughness={0.65} />
+            </mesh>
+            <mesh position={[0.02, -0.02, 0]}>
+              <sphereGeometry args={[0.042, 10, 10]} />
+              <meshStandardMaterial color="#ffffff" roughness={0.6} />
+            </mesh>
+          </group>
         </group>
 
-        {/* Two Wide Flat-Screen Monitors Showing Tokyo Street Scenes */}
-        {[3.9, 2.1].map((mz, idx) => (
-          <group key={idx} position={[-4.36, 2.38, mz]}>
-            <mesh>
-              <boxGeometry args={[0.06, 0.72, 1.38]} />
-              <meshStandardMaterial color="#18181b" roughness={0.4} />
+        {/* Two Large Light-Oak Framed Seascape Photographs with Wide White Mattes (media_1794279939763_57a87c53.jpg) */}
+        {[3.92, 2.08].map((mz, idx) => (
+          <group key={idx} position={[-4.36, 2.5, mz]}>
+            {/* Natural Light-Oak Picture Frame */}
+            <mesh castShadow>
+              <boxGeometry args={[0.045, 0.78, 1.38]} />
+              <meshStandardMaterial color="#c89d6c" roughness={0.6} />
             </mesh>
-            <mesh position={[0.032, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-              <planeGeometry args={[1.3, 0.64]} />
-              <meshStandardMaterial
-                color={idx === 0 ? '#385868' : '#4a3d36'}
-                emissive={idx === 0 ? '#1e3a4c' : '#3b2820'}
-                emissiveIntensity={0.65}
-              />
+            {/* Wide Crisp White Matte */}
+            <mesh position={[0.024, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+              <planeGeometry args={[1.3, 0.7]} />
+              <meshBasicMaterial color="#f8fafc" />
             </mesh>
+            {/* Bright Blue Sky Photo Upper Area */}
+            <mesh position={[0.026, 0.05, 0]} rotation={[0, Math.PI / 2, 0]}>
+              <planeGeometry args={[1.04, 0.36]} />
+              <meshBasicMaterial color="#60a5fa" />
+            </mesh>
+            {/* Turquoise Sea & Coastline Photo Lower Area */}
+            <mesh position={[0.027, -0.14, 0]} rotation={[0, Math.PI / 2, 0]}>
+              <planeGeometry args={[1.04, 0.14]} />
+              <meshBasicMaterial color={idx === 0 ? '#0284c7' : '#0ea5e9'} />
+            </mesh>
+            {idx === 0 ? (
+              /* Left Frame: White Coastal Wind Turbine & Dark Basalt Shore */
+              <>
+                <mesh position={[0.028, -0.16, 0.1]} rotation={[0, Math.PI / 2, 0]}>
+                  <planeGeometry args={[0.76, 0.035]} />
+                  <meshBasicMaterial color="#334155" />
+                </mesh>
+                <mesh position={[0.029, -0.02, 0.24]} rotation={[0, Math.PI / 2, 0]}>
+                  <planeGeometry args={[0.016, 0.26]} />
+                  <meshBasicMaterial color="#ffffff" />
+                </mesh>
+                <mesh position={[0.029, 0.11, 0.24]} rotation={[0.4, Math.PI / 2, 0]}>
+                  <planeGeometry args={[0.14, 0.01]} />
+                  <meshBasicMaterial color="#ffffff" />
+                </mesh>
+              </>
+            ) : (
+              /* Right Frame: Curved Sandy Beach Spit & Headland */
+              <>
+                <mesh position={[0.028, -0.1, -0.12]} rotation={[0, Math.PI / 2, 0]}>
+                  <planeGeometry args={[0.68, 0.035]} />
+                  <meshBasicMaterial color="#92400e" />
+                </mesh>
+                <mesh position={[0.028, -0.17, -0.18]} rotation={[0, Math.PI / 2, 0]}>
+                  <planeGeometry args={[0.52, 0.06]} />
+                  <meshBasicMaterial color="#e7d5b8" />
+                </mesh>
+              </>
+            )}
           </group>
         ))}
 
-        {/* HIDDEN OBJECT #2 (`hidden_house_frame`): Framed Painting of Red-Roof House on Green Hill */}
+        {/* HIDDEN OBJECT #2 (`hidden_house_frame`): Framed Painting on Right Side of Wood Wall */}
         <group
-          position={[-4.36, 2.02, 1.15]}
+          position={[-4.36, 2.26, 0.92]}
           onClick={(e) => {
             e.stopPropagation();
             onFindHiddenStamp('hidden_house_frame');
@@ -2080,10 +2126,10 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           {(hoveredHiddenId === 'hidden_house_frame' ||
             collectedStampIds.includes('hidden_house_frame')) && (
             <Html position={[0.12, 0.26, 0]} center zIndexRange={[6, 0]}>
-              <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#c85a28] px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg ring-1 ring-[#fde68a]">
+              <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/50 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
                 {collectedStampIds.includes('hidden_house_frame')
-                  ? '🖼️ 빨간 지붕 집 액자 ✓'
-                  : '🔍 [터치] 숨은 그림 발견!'}
+                  ? '빨간 지붕 집 액자 확인'
+                  : '빨간 지붕 집 액자 발견'}
               </div>
             </Html>
           )}
@@ -2103,54 +2149,152 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           </group>
         ))}
 
-        {/* Decorative Face-Out Books & Objects on Left Wall Ledges (113957_71.jpg, 81.jpg) */}
-        {/* Rabbit Clock on Top Left Ledge */}
-        <group position={[-4.22, 1.66, 4.72]}>
-          <mesh>
-            <cylinderGeometry args={[0.06, 0.06, 0.04, 14]} />
-            <meshStandardMaterial color="#e5d5c0" />
+        {/* Upright Curated Books & Props on Left Wall 3-Tier Ledges (media_1794279939763_57a87c53.jpg)
+            - 100% Straight Upright (`rotation={[0, Math.PI / 2, 0]}` — ZERO slant!)
+            - Clicking ANY book on this shelf opens 박근태 『동경전 (東京傳)』! */}
+        {/* Top Ledge Left: Wooden Clock with Black Rabbit Silhouette */}
+        <group position={[-4.21, 1.635, 4.72]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.05, 0.12, 0.12]} />
+            <meshStandardMaterial color="#e5d5c0" roughness={0.6} />
           </mesh>
-          <mesh position={[0, 0.08, 0]}>
-            <sphereGeometry args={[0.03, 8, 8]} />
+          <mesh position={[0, 0.085, 0]}>
+            <sphereGeometry args={[0.028, 8, 8]} />
             <meshStandardMaterial color="#18181b" />
           </mesh>
         </group>
-        {/* Minimalist Tall Black Bar Lamp on Top Right Ledge */}
-        <group position={[-4.2, 1.65, 1.25]}>
-          <mesh position={[0, 0.04, 0]}>
-            <cylinderGeometry args={[0.045, 0.045, 0.08, 12]} />
+        {/* Top Ledge Right: Tiny White Ghost Figurine + Minimalist Black T-Bar Lamp */}
+        <mesh position={[-4.2, 1.61, 1.28]} castShadow>
+          <sphereGeometry args={[0.032, 10, 10]} />
+          <meshStandardMaterial color="#ffffff" />
+        </mesh>
+        <group position={[-4.2, 1.62, 1.16]}>
+          <mesh position={[0, 0.03, 0]}>
+            <cylinderGeometry args={[0.042, 0.042, 0.07, 12]} />
             <meshStandardMaterial color="#18181b" />
           </mesh>
           <mesh position={[0, 0.22, 0]}>
-            <cylinderGeometry args={[0.008, 0.008, 0.34, 8]} />
+            <cylinderGeometry args={[0.007, 0.007, 0.34, 8]} />
+            <meshStandardMaterial color="#18181b" />
+          </mesh>
+          <mesh position={[0, 0.39, 0]}>
+            <boxGeometry args={[0.02, 0.012, 0.12]} />
             <meshStandardMaterial color="#18181b" />
           </mesh>
         </group>
-        {/* Ceramic Pitcher & White Bust Figurine on Middle Ledge */}
-        <mesh position={[-4.2, 1.13, 2.3]}>
-          <cylinderGeometry args={[0.035, 0.045, 0.1, 10]} />
-          <meshStandardMaterial color="#f8fafc" />
-        </mesh>
-        <mesh position={[-4.2, 1.13, 2.18]}>
-          <boxGeometry args={[0.04, 0.11, 0.04]} />
-          <meshStandardMaterial color="#ffffff" />
-        </mesh>
-        {/* Additional TASCHEN City Books (Berlin, Rome, Vienna) on Bottom Ledge */}
-        {[
-          [4.65, '#3b82f6'],
-          [4.25, '#a8896c'],
-          [3.15, '#64748b'],
-        ].map(([bz, col], idx) => (
-          <mesh
-            key={idx}
-            position={[-4.22, 0.65, Number(bz)]}
-            rotation={[-0.15, Math.PI / 2, 0]}
-            castShadow
-          >
-            <boxGeometry args={[0.22, 0.29, 0.04]} />
-            <meshStandardMaterial color={String(col)} roughness={0.5} />
+        {/* Middle Ledge Left: Glass Terrarium Bowl on White Coaster */}
+        <group position={[-4.2, 1.09, 4.68]}>
+          <mesh>
+            <cylinderGeometry args={[0.075, 0.075, 0.018, 12]} />
+            <meshStandardMaterial color="#f8fafc" />
           </mesh>
-        ))}
+          <mesh position={[0, 0.045, 0]}>
+            <cylinderGeometry args={[0.062, 0.052, 0.08, 12]} />
+            <meshStandardMaterial color="#365314" roughness={0.4} />
+          </mesh>
+        </group>
+        {/* Middle Ledge Right: Small Black Card Stand with Mini Orange Clip Lamp */}
+        <group position={[-4.2, 1.13, 1.16]}>
+          <mesh>
+            <boxGeometry args={[0.04, 0.11, 0.09]} />
+            <meshStandardMaterial color="#18181b" />
+          </mesh>
+          <mesh position={[0, 0.09, 0]}>
+            <coneGeometry args={[0.022, 0.035, 8]} />
+            <meshStandardMaterial color="#ea580c" />
+          </mesh>
+        </group>
+
+        {/* Stacked Natural Pine Lumber Beams under Bottom Ledge on Floor (media_1794279939763_57a87c53.jpg) */}
+        <group position={[-4.16, 0.09, 2.95]}>
+          <mesh castShadow receiveShadow>
+            <boxGeometry args={[0.24, 0.17, 3.45]} />
+            <meshStandardMaterial color="#e7d3b5" roughness={0.75} />
+          </mesh>
+          {[-0.65, 0.85].map((sz, sIdx) => (
+            <mesh key={sIdx} position={[0.121, 0, sz]}>
+              <boxGeometry args={[0.006, 0.174, 0.018]} />
+              <meshBasicMaterial color="#dc2626" />
+            </mesh>
+          ))}
+        </group>
+
+        {/* All Upright Curated Books on the 3 Ledges (`rotation={[0, Math.PI / 2, 0]}`) — Clicking ANY book opens 박근태 『동경전』! */}
+        {(() => {
+          const tokyoDenBook = REPRESENTATIVE_BOOKS.find(
+            (b) => b.id === 'book_tokyo_den'
+          );
+          const curatedWallBooks: Array<{
+            pos: [number, number, number];
+            size: [number, number, number];
+            cover: string;
+            band?: string;
+            bandPos?: 'bottom' | 'center' | 'top';
+          }> = [
+            // Top Ledge (Y_top = 1.575 -> center Y = 1.71): 6 upright books
+            { pos: [-4.21, 1.71, 4.26], size: [0.19, 0.27, 0.032], cover: '#f5f2eb', band: '#1e293b', bandPos: 'center' },
+            { pos: [-4.21, 1.715, 3.70], size: [0.2, 0.28, 0.034], cover: '#ffffff', band: '#65a30d', bandPos: 'bottom' },
+            { pos: [-4.21, 1.71, 3.12], size: [0.19, 0.27, 0.032], cover: '#ea580c', band: '#7c2d12', bandPos: 'top' },
+            { pos: [-4.21, 1.715, 2.54], size: [0.2, 0.28, 0.034], cover: '#fef9c3', band: '#ca8a04', bandPos: 'bottom' },
+            { pos: [-4.21, 1.71, 1.98], size: [0.19, 0.27, 0.032], cover: '#7e22ce', band: '#fde047', bandPos: 'center' },
+            { pos: [-4.21, 1.71, 1.44], size: [0.19, 0.27, 0.032], cover: '#faf3e3', band: '#c2410c', bandPos: 'center' },
+
+            // Middle Ledge (Y_top = 1.075 -> center Y = 1.215): 4 upright books + 東京傳 at Z = 1.52
+            { pos: [-4.21, 1.22, 4.14], size: [0.21, 0.29, 0.034], cover: '#e5e0d8', band: '#dc2626', bandPos: 'center' },
+            { pos: [-4.21, 1.215, 3.48], size: [0.2, 0.28, 0.034], cover: '#27272a', band: '#71717a', bandPos: 'bottom' },
+            { pos: [-4.21, 1.21, 2.82], size: [0.19, 0.27, 0.034], cover: '#ffffff', band: '#ef4444', bandPos: 'bottom' },
+            { pos: [-4.21, 1.215, 2.18], size: [0.2, 0.28, 0.038], cover: '#689f78', band: '#e11d48', bandPos: 'center' },
+
+            // Bottom Ledge (Y_top = 0.525 -> center Y = 0.695): 4 large upright city photo books (Berlin, London, Vienna, Rome)
+            { pos: [-4.21, 0.695, 4.28], size: [0.25, 0.34, 0.042], cover: '#60a5fa', band: '#334155', bandPos: 'bottom' },
+            { pos: [-4.21, 0.695, 3.45], size: [0.25, 0.34, 0.042], cover: '#b91c1c', band: '#e7d5b8', bandPos: 'top' },
+            { pos: [-4.21, 0.695, 2.60], size: [0.25, 0.34, 0.042], cover: '#475569', band: '#94a3b8', bandPos: 'top' },
+            { pos: [-4.21, 0.695, 1.75], size: [0.25, 0.34, 0.042], cover: '#b45309', band: '#fed7aa', bandPos: 'top' },
+          ];
+
+          return curatedWallBooks.map((cb, idx) => (
+            <group
+              key={`dokja-wall-book-${idx}`}
+              position={cb.pos}
+              rotation={[0, Math.PI / 2, 0]}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (tokyoDenBook) onSelectBook(tokyoDenBook);
+              }}
+              onPointerOver={(e) => {
+                e.stopPropagation();
+                if (tokyoDenBook) setHoveredBookId(tokyoDenBook.id);
+              }}
+              onPointerOut={() => setHoveredBookId(null)}
+            >
+              <mesh castShadow receiveShadow>
+                <boxGeometry args={cb.size} />
+                <meshStandardMaterial color={cb.cover} roughness={0.48} />
+              </mesh>
+              {cb.band && (
+                <mesh
+                  position={[
+                    0,
+                    cb.bandPos === 'top'
+                      ? cb.size[1] * 0.28
+                      : cb.bandPos === 'bottom'
+                      ? -cb.size[1] * 0.28
+                      : 0,
+                    cb.size[2] * 0.5 + 0.002,
+                  ]}
+                >
+                  <planeGeometry
+                    args={[
+                      cb.bandPos === 'center' ? cb.size[0] * 0.55 : cb.size[0] * 0.98,
+                      cb.bandPos === 'center' ? cb.size[1] * 0.42 : cb.size[1] * 0.36,
+                    ]}
+                  />
+                  <meshStandardMaterial color={cb.band} roughness={0.5} />
+                </mesh>
+              )}
+            </group>
+          ));
+        })()}
       </group>
 
       {/* ============================================================
@@ -2230,7 +2374,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
 
         {hoveredStoryId === 'story_duck_mascot' && (
           <Html position={[0, 1.15, 0]} center zIndexRange={[5, 0]}>
-            <div className="pointer-events-none whitespace-nowrap rounded-[3px] bg-[#c85a28] px-2.5 py-1 text-[11px] font-medium text-white shadow-md">
+            <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/45 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
               마스코트 오리 포토존
             </div>
           </Html>
@@ -2417,10 +2561,10 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           {(hoveredHiddenId === 'hidden_mumu_dog' ||
             collectedStampIds.includes('hidden_mumu_dog')) && (
             <Html position={[0, 0.36, 0]} center zIndexRange={[6, 0]}>
-              <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#c85a28] px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg ring-1 ring-[#fde68a]">
+              <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/50 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
                 {collectedStampIds.includes('hidden_mumu_dog')
-                  ? '🐶 까만 강아지 무무 ✓'
-                  : '🔍 [터치] 숨은 무무 발견!'}
+                  ? '까만 강아지 무무 확인'
+                  : '숨은 무무 발견'}
               </div>
             </Html>
           )}
@@ -2517,10 +2661,10 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
             {(hoveredHiddenId === 'hidden_butterfly_frame' ||
               collectedStampIds.includes('hidden_butterfly_frame')) && (
               <Html position={[-0.12, 0.25, 0]} center zIndexRange={[6, 0]}>
-                <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#c85a28] px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg ring-1 ring-[#fde68a]">
+                <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/50 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
                   {collectedStampIds.includes('hidden_butterfly_frame')
-                    ? '🦋 파란 나비 액자 ✓'
-                    : '🔍 [터치] 파란 나비 액자 발견!'}
+                    ? '파란 나비 액자 확인'
+                    : '파란 나비 액자 발견'}
                 </div>
               </Html>
             )}
@@ -2690,7 +2834,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
             />
           </mesh>
 
-          {/* Top-of-Bookcase Wooden Plaque & Notification UI (책장 윗쪽 알림) */}
+          {/* Top-of-Bookcase Semi-Transparent Plaque & Notification UI (책장 윗쪽 알림) */}
           <group
             position={[3.95, 2.91, -2.47]}
             rotation={[0, -Math.PI / 2, 0]}
@@ -2704,29 +2848,21 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
             }}
             onPointerOut={() => setHoveredOwnerLibrary(false)}
           >
-            <mesh castShadow>
-              <boxGeometry args={[0.72, 0.16, 0.04]} />
-              <meshStandardMaterial
-                color={
-                  ownerLibraryNoticeOpen || hoveredOwnerLibrary
-                    ? '#c85a28'
-                    : '#29201b'
-                }
-                roughness={0.5}
-              />
+            <mesh visible={false}>
+              <boxGeometry args={[0.76, 0.22, 0.08]} />
             </mesh>
 
-            <Html position={[0, 0.02, 0.04]} center zIndexRange={[18, 0]}>
+            <Html position={[0, 0, 0.02]} center zIndexRange={[18, 0]}>
               {ownerLibraryNoticeOpen ? (
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
                     setOwnerLibraryNoticeOpen(false);
                   }}
-                  className="pointer-events-auto flex flex-col gap-1 rounded-[3px] border border-[#d4af37]/80 bg-[#181310]/95 px-3 py-2 text-[#f5efe6] shadow-xl backdrop-blur-sm"
+                  className="pointer-events-auto flex flex-col gap-1 rounded-[4px] bg-black/55 px-3.5 py-2.5 text-white/95 shadow-lg backdrop-blur-md"
                 >
-                  <div className="flex items-center justify-between gap-4 border-b border-[#d4af37]/30 pb-1">
-                    <span className="text-[11px] font-bold tracking-tight text-[#fde68a] whitespace-nowrap">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-xs text-white whitespace-nowrap">
                       책방지기의 서재
                     </span>
                     <button
@@ -2735,13 +2871,16 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
                         e.stopPropagation();
                         setOwnerLibraryNoticeOpen(false);
                       }}
-                      className="cursor-pointer rounded-[2px] border border-[#d4af37]/50 bg-[#29201b] px-1.5 py-0.5 text-[10px] font-semibold text-[#fde68a] hover:bg-[#c85a28] hover:text-white transition-colors"
+                      className="cursor-pointer rounded-[3px] bg-white/15 px-1.5 py-0.5 text-[11px] text-white hover:bg-white/25 transition-colors"
                     >
                       닫기
                     </button>
                   </div>
-                  <p className="text-[11px] font-medium text-[#fca5a5] whitespace-nowrap">
-                    책방지기의 서재 공간입니다. 판매되는 책이 아닙니다.
+                  <p className="text-xs leading-relaxed text-white/90 whitespace-nowrap">
+                    판매·대여되는 책은 아니지만 자유롭게 꺼내 읽으실 수 있습니다.
+                  </p>
+                  <p className="text-xs leading-relaxed text-white/80 whitespace-nowrap">
+                    보시고 제자리에 꽂아 주세요.
                   </p>
                 </div>
               ) : (
@@ -2751,13 +2890,13 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
                     e.stopPropagation();
                     setOwnerLibraryNoticeOpen(true);
                   }}
-                  className={`pointer-events-auto cursor-pointer flex items-center gap-1 whitespace-nowrap rounded-[3px] px-2.5 py-1 text-[11px] font-semibold transition-all shadow-md ${
+                  className={`pointer-events-auto cursor-pointer whitespace-nowrap rounded-[4px] px-2.5 py-1 text-xs transition-all backdrop-blur-md ${
                     hoveredOwnerLibrary
-                      ? 'bg-[#c85a28] text-white border border-[#fde68a]'
-                      : 'bg-[#1c1613]/95 text-[#fde68a] border border-[#d4af37]/60 hover:bg-[#c85a28] hover:text-white'
+                      ? 'bg-black/60 text-white shadow-md'
+                      : 'bg-black/38 text-white/90 hover:bg-black/55 hover:text-white shadow-sm'
                   }`}
                 >
-                  <span>책방지기의 서재</span>
+                  책방지기의 서재
                 </button>
               )}
             </Html>
@@ -2916,13 +3055,10 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
           rotation={[0, -Math.PI / 2, 0]}
           onClick={(e) => {
             e.stopPropagation();
-            const st = SPACE_STORIES.find(
-              (s) => s.id === 'story_camera_leather'
-            );
-            if (st) onSelectStory(st);
+            setOwnerDisplayNoticeOpen((prev) => !prev);
           }}
-          onPointerOver={() => setHoveredStoryId('story_camera_leather')}
-          onPointerOut={() => setHoveredStoryId(null)}
+          onPointerOver={() => setHoveredOwnerDisplay(true)}
+          onPointerOut={() => setHoveredOwnerDisplay(false)}
         >
           {/* Rolled Patterned Carpet/Mat Tube Leaning in the Far-Left Corner next to the Shelf */}
           <group position={[-1.12, 0, -0.05]}>
@@ -3876,13 +4012,54 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
             </group>
           </group>
 
-          {hoveredStoryId === 'story_camera_leather' && (
-            <Html position={[0, 1.95, 0.35]} center zIndexRange={[5, 0]}>
-              <div className="pointer-events-none whitespace-nowrap rounded-[3px] bg-[#c85a28] px-2.5 py-1 text-[11px] font-medium text-white shadow-md">
-                가죽제품 · 인증서 아카이브 · 사진작가 책방지기의 카메라 진열장
+          {/* Top-of-Shelf Clickable Title & Expandable Description ('책방지기 진열장') */}
+          <Html position={[0, 2.88, 0.25]} center zIndexRange={[18, 0]}>
+            {ownerDisplayNoticeOpen ? (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOwnerDisplayNoticeOpen(false);
+                }}
+                className="pointer-events-auto flex flex-col gap-1.5 rounded-[4px] bg-black/55 px-3.5 py-2.5 text-white/95 shadow-lg backdrop-blur-md"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm text-white whitespace-nowrap">
+                    책방지기 진열장
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOwnerDisplayNoticeOpen(false);
+                    }}
+                    className="cursor-pointer rounded-[3px] bg-white/15 px-1.5 py-0.5 text-[11px] text-white hover:bg-white/25 transition-colors"
+                  >
+                    닫기
+                  </button>
+                </div>
+                <p className="text-xs leading-relaxed text-white/85 whitespace-nowrap">
+                  가죽 제품과 인증서 아카이브, 그리고 책방지기의 또 다른 직업인
+                  <br />
+                  사진작가로 활동하며 사용한 카메라가 진열되어 있습니다.
+                </p>
               </div>
-            </Html>
-          )}
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOwnerDisplayNoticeOpen(true);
+                }}
+                className={`pointer-events-auto cursor-pointer whitespace-nowrap rounded-[4px] px-2.5 py-1 text-xs transition-all backdrop-blur-md ${
+                  hoveredOwnerDisplay
+                    ? 'bg-black/60 text-white shadow-md'
+                    : 'bg-black/38 text-white/90 hover:bg-black/55 hover:text-white shadow-sm'
+                }`}
+              >
+                책방지기 진열장
+              </button>
+            )}
+          </Html>
         </group>
 
         {/* Detailed Yellow Molded Plastic Stool in front of Front-Right Bookshelf (`seat_yellow_stool`) */}
@@ -3920,7 +4097,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
               ))}
               {hoveredSeatId === stool.id && (
                 <Html position={[0, 0.72, 0]} center zIndexRange={[5, 0]}>
-                  <div className="pointer-events-none whitespace-nowrap rounded-[3px] bg-[#c85a28] px-2.5 py-1 text-[11px] font-medium text-white shadow-md">
+                  <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/45 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
                     노란 스툴에 앉기
                   </div>
                 </Html>
@@ -3945,27 +4122,24 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
               onSelectGenreShelf(shelf);
             }}
           >
-            <mesh castShadow>
-              <boxGeometry args={[0.52, 0.18, 0.04]} />
-              <meshStandardMaterial
-                color={isCurrentActive ? '#c85a28' : '#29201b'}
-                roughness={0.5}
-              />
+            <mesh visible={false}>
+              <boxGeometry args={[0.65, 0.22, 0.08]} />
             </mesh>
-            <Html position={[0, 0, 0.04]} center zIndexRange={[5, 0]}>
-              <div
-                className={`pointer-events-none flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold transition-all shadow-md ${
+            <Html position={[0, 0, 0.02]} center zIndexRange={[5, 0]}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectGenreShelf(shelf);
+                }}
+                className={`pointer-events-auto cursor-pointer whitespace-nowrap rounded-[4px] px-2.5 py-1 text-xs transition-all backdrop-blur-md ${
                   isCurrentActive
-                    ? 'bg-[#c85a28] text-white ring-1 ring-[#fde68a]'
-                    : 'bg-[#1c1613]/90 text-[#f5efe6] border border-[#d4af37]/50'
+                    ? 'bg-black/60 text-white shadow-md'
+                    : 'bg-black/38 text-white/90 hover:bg-black/55 hover:text-white shadow-sm'
                 }`}
               >
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: shelf.accentColor }}
-                />
-                <span>{shelf.name}</span>
-              </div>
+                {shelf.name}
+              </button>
             </Html>
           </group>
         );
@@ -3999,20 +4173,40 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
               castShadow
               receiveShadow
             >
-              <boxGeometry args={[0.21, 0.28, 0.042]} />
+              <boxGeometry
+                args={
+                  book.id === 'book_tokyo_den'
+                    ? [0.27, 0.27, 0.038]
+                    : [0.21, 0.28, 0.042]
+                }
+              />
               <meshStandardMaterial
                 color={book.coverColor}
                 emissive={isHovered ? book.accentColor : '#000000'}
-                emissiveIntensity={isHovered ? 0.35 : 0}
+                emissiveIntensity={isHovered ? 0.25 : 0}
                 roughness={0.45}
               />
             </mesh>
-            <mesh position={[0, -0.05, isHovered ? 0.062 : 0.022]}>
-              <boxGeometry args={[0.212, 0.055, 0.004]} />
-              <meshStandardMaterial color={book.accentColor} />
-            </mesh>
+            {book.id === 'book_tokyo_den' ? (
+              /* Authentic 『東京傳 (동경전)』 Photo-Book Cover: White Upper Margin + Street Photo Lower Area */
+              <>
+                <mesh position={[0, -0.032, isHovered ? 0.061 : 0.021]}>
+                  <planeGeometry args={[0.246, 0.175]} />
+                  <meshStandardMaterial color="#475569" roughness={0.5} />
+                </mesh>
+                <mesh position={[0, 0.09, isHovered ? 0.061 : 0.021]}>
+                  <planeGeometry args={[0.07, 0.016]} />
+                  <meshBasicMaterial color="#18181b" />
+                </mesh>
+              </>
+            ) : (
+              <mesh position={[0, -0.05, isHovered ? 0.062 : 0.022]}>
+                <boxGeometry args={[0.212, 0.055, 0.004]} />
+                <meshStandardMaterial color={book.accentColor} />
+              </mesh>
+            )}
             {/* HIDDEN OBJECT #1 (`hidden_book_dokja`): Protruding Golden Bookmark Ribbon & Star Charm on 『작지만, 독자』 */}
-            {book.id === 'book_small_but_dokja' && (
+            {book.id === 'book_small_dokja' && (
               <group
                 position={[0, 0.175, 0.015]}
                 onClick={(e) => {
@@ -4041,18 +4235,11 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
             )}
             {(isHovered || nearbyBookId === book.id) && (
               <Html position={[0, 0.25, 0.05]} center zIndexRange={[6, 0]}>
-                <div
-                  className={`pointer-events-none flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium transition-all shadow-md ${
-                    isHovered || nearbyBookId === book.id
-                      ? 'bg-[#c85a28] text-white ring-1 ring-[#fde68a]'
-                      : 'bg-[#1c1613]/90 text-[#fde68a] border border-[#e09f3e]/60'
-                  }`}
-                >
-                  <span>📕</span>
-                  <span className="max-w-[130px] truncate">{book.title}</span>
+                <div className="pointer-events-none flex items-center gap-1.5 whitespace-nowrap rounded-[4px] bg-black/50 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm transition-all">
+                  <span className="max-w-[140px] truncate">{book.title}</span>
                   {nearbyBookId === book.id && (
-                    <span className="ml-0.5 rounded bg-black/30 px-1 text-[10px]">
-                      [E]
+                    <span className="rounded-[2px] bg-white/15 px-1 text-[10px] text-white/85">
+                      E
                     </span>
                   )}
                 </div>
@@ -4062,9 +4249,9 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
         );
       })}
 
-      {/* Also place a Dedicated Hidden Golden-Star-Bookmark Book on the Right Main Bookcase (`[4.12, 1.28, 2.92]`) so searching either bookshelf finds #1! */}
+      {/* Dedicated Hidden Golden-Star-Bookmark Book on the Right Main Bookcase 4th Shelf (`[4.12, 1.72, 2.72]`) */}
       <group
-        position={[4.12, 1.28, 2.92]}
+        position={[4.12, 1.72, 2.72]}
         rotation={[0, -Math.PI / 2, 0]}
         onClick={(e) => {
           e.stopPropagation();
@@ -4105,10 +4292,10 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
         {(hoveredHiddenId === 'hidden_book_dokja' ||
           collectedStampIds.includes('hidden_book_dokja')) && (
           <Html position={[0, 0.3, 0.06]} center zIndexRange={[6, 0]}>
-            <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#c85a28] px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg ring-1 ring-[#fde68a]">
+            <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/50 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
               {collectedStampIds.includes('hidden_book_dokja')
-                ? '📕 황금 별 책갈피 책 ✓'
-                : '🔍 [터치] 황금 별 책갈피 책 발견!'}
+                ? '황금 별 책갈피 책 확인'
+                : '황금 별 책갈피 책 발견'}
             </div>
           </Html>
         )}
@@ -4710,10 +4897,10 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
                   {(hoveredHiddenId === 'hidden_hat_duck' ||
                     collectedStampIds.includes('hidden_hat_duck')) && (
                     <Html position={[0, 0.22, 0]} center zIndexRange={[6, 0]}>
-                      <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#c85a28] px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg ring-1 ring-[#fde68a]">
+                      <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/50 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
                         {collectedStampIds.includes('hidden_hat_duck')
-                          ? '🦆 노란 모자 오리 ✓'
-                          : '🔍 [터치] 노란 모자 오리 발견!'}
+                          ? '노란 모자 오리 확인'
+                          : '노란 모자 오리 발견'}
                       </div>
                     </Html>
                   )}
@@ -4804,8 +4991,8 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
 
               {hoveredTableId === centerTable.id && (
                 <Html position={[0, 1.24, 0]} center zIndexRange={[5, 0]}>
-                  <div className="pointer-events-none whitespace-nowrap rounded-[3px] bg-[#c85a28] px-2.5 py-1 text-[11px] font-medium text-white shadow-md">
-                    추천 도서 테이블 & 방명록
+                  <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/45 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
+                    추천 도서 테이블
                   </div>
                 </Html>
               )}
@@ -5882,7 +6069,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
 
                 {hoveredStoryId === 'story_personal_study' && (
                   <Html position={[0, 1.38, 0]} center zIndexRange={[5, 0]}>
-                    <div className="pointer-events-none whitespace-nowrap rounded-[3px] bg-[#c85a28] px-2.5 py-1 text-[11px] font-medium text-white shadow-md">
+                    <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/45 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
                       책방지기 작업공간 · 편하게 앉아서 책을 보세요
                     </div>
                   </Html>
@@ -5894,55 +6081,77 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
                 [-0.86, -0.45, Math.PI / 2],
                 [-0.86, 0.45, Math.PI / 2],
                 [0.86, -0.52, -Math.PI / 2],
-              ].map(([cx, cz, cRot], cIdx) => (
-                <group
-                  key={`windsor-chair-${cIdx}`}
-                  position={[Number(cx), 0, Number(cz)]}
-                  rotation={[0, Number(cRot), 0]}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectSeat(workshopChair);
-                  }}
-                  onPointerOver={() => setHoveredSeatId(workshopChair.id)}
-                  onPointerOut={() => setHoveredSeatId(null)}
-                >
-                  {/* Contoured Wooden Seat */}
-                  <mesh position={[0, 0.44, 0]} castShadow>
-                    <boxGeometry args={[0.46, 0.045, 0.46]} />
-                    <meshStandardMaterial color="#784721" roughness={0.65} />
-                  </mesh>
-                  {/* Curved Windsor Top Rail & 5 Spindles */}
-                  <mesh position={[0, 0.82, -0.2]} castShadow>
-                    <boxGeometry args={[0.48, 0.05, 0.045]} />
-                    <meshStandardMaterial color="#6e411c" roughness={0.65} />
-                  </mesh>
-                  {[-0.16, -0.08, 0, 0.08, 0.16].map((sx, sIdx) => (
-                    <mesh key={sIdx} position={[sx, 0.63, -0.2]}>
-                      <cylinderGeometry args={[0.01, 0.01, 0.36, 6]} />
-                      <meshStandardMaterial color="#784721" />
+              ].map(([cx, cz, cRot], cIdx) => {
+                const isOccupiedByOwner = isOwnerPresent && cIdx === 1;
+                return (
+                  <group
+                    key={`windsor-chair-${cIdx}`}
+                    position={[Number(cx), 0, Number(cz)]}
+                    rotation={[0, Number(cRot), 0]}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isOccupiedByOwner) {
+                        onOpenOwnerTalk();
+                      } else {
+                        onSelectSeat(workshopChair);
+                      }
+                    }}
+                    onPointerOver={() => {
+                      if (!isOccupiedByOwner) {
+                        setHoveredSeatId(workshopChair.id);
+                      }
+                    }}
+                    onPointerOut={() => setHoveredSeatId(null)}
+                  >
+                    {/* Contoured Wooden Seat */}
+                    <mesh position={[0, 0.44, 0]} castShadow>
+                      <boxGeometry args={[0.46, 0.045, 0.46]} />
+                      <meshStandardMaterial color="#784721" roughness={0.65} />
                     </mesh>
-                  ))}
-                  {/* 4 Wooden Legs + Signature Bright-Green Knitted Chair Leg Socks (`초록 양말 발커버`)! */}
-                  {[
-                    [-0.18, -0.18],
-                    [0.18, -0.18],
-                    [-0.18, 0.18],
-                    [0.18, 0.18],
-                  ].map(([lx, lz], lIdx) => (
-                    <group key={lIdx} position={[lx, 0, lz]}>
-                      <mesh position={[0, 0.22, 0]} castShadow>
-                        <cylinderGeometry args={[0.018, 0.015, 0.44, 8]} />
-                        <meshStandardMaterial color="#6e411c" />
+                    {/* Curved Windsor Top Rail & 5 Spindles */}
+                    <mesh position={[0, 0.82, -0.2]} castShadow>
+                      <boxGeometry args={[0.48, 0.05, 0.045]} />
+                      <meshStandardMaterial color="#6e411c" roughness={0.65} />
+                    </mesh>
+                    {[-0.16, -0.08, 0, 0.08, 0.16].map((sx, sIdx) => (
+                      <mesh key={sIdx} position={[sx, 0.63, -0.2]}>
+                        <cylinderGeometry args={[0.01, 0.01, 0.36, 6]} />
+                        <meshStandardMaterial color="#784721" />
                       </mesh>
-                      {/* Cute Green Knitted Leg Sock at Bottom of Each Leg */}
-                      <mesh position={[0, 0.055, 0]}>
-                        <cylinderGeometry args={[0.024, 0.024, 0.11, 10]} />
-                        <meshStandardMaterial color="#16a34a" roughness={0.85} />
-                      </mesh>
-                    </group>
-                  ))}
-                </group>
-              ))}
+                    ))}
+                    {/* 4 Wooden Legs + Signature Bright-Green Knitted Chair Leg Socks (`초록 양말 발커버`)! */}
+                    {[
+                      [-0.18, -0.18],
+                      [0.18, -0.18],
+                      [-0.18, 0.18],
+                      [0.18, 0.18],
+                    ].map(([lx, lz], lIdx) => (
+                      <group key={lIdx} position={[lx, 0, lz]}>
+                        <mesh position={[0, 0.22, 0]} castShadow>
+                          <cylinderGeometry args={[0.018, 0.015, 0.44, 8]} />
+                          <meshStandardMaterial color="#6e411c" />
+                        </mesh>
+                        {/* Cute Green Knitted Leg Sock at Bottom of Each Leg */}
+                        <mesh position={[0, 0.055, 0]}>
+                          <cylinderGeometry args={[0.024, 0.024, 0.11, 10]} />
+                          <meshStandardMaterial color="#16a34a" roughness={0.85} />
+                        </mesh>
+                      </group>
+                    ))}
+                  </group>
+                );
+              })}
+
+              {/* Bookshop Owner (`책방지기`) — Appears on a 5-Minute Cycle for ~30 Seconds */}
+              {isOwnerPresent && (
+                <BookshopOwner3D
+                  position={[-0.85, 0, 0.45]}
+                  rotationY={Math.PI / 2}
+                  isTalking={isOwnerTalking}
+                  selectedQuestionIdx={selectedOwnerQuestionIdx}
+                  onTalkClick={onOpenOwnerTalk}
+                />
+              )}
             </group>
 
             {placedBook && (
@@ -6010,7 +6219,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
               ))}
               {hoveredSeatId === workshopChair.id && (
                 <Html position={[0, 1.05, 0]} center zIndexRange={[5, 0]}>
-                  <div className="pointer-events-none whitespace-nowrap rounded-[3px] bg-[#c85a28] px-2.5 py-1 text-[11px] font-medium text-white shadow-md">
+                  <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/45 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
                     편하게 앉아서 책 읽기
                   </div>
                 </Html>
@@ -6675,12 +6884,12 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
               {hoveredStoryId === 'story_sink_and_mugs' && (
                 <>
                   <Html position={[-1.85, 2.25, -5.85]} center zIndexRange={[5, 0]}>
-                    <div className="pointer-events-none whitespace-nowrap rounded-[3px] bg-[#c85a28] px-2.5 py-1 text-[11px] font-medium text-white shadow-md">
+                    <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/45 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
                       싱크대와 컵은 책방지기 외 사용 불가 · 정수기는 사용 가능
                     </div>
                   </Html>
                   <Html position={[1.35, 1.65, -5.72]} center zIndexRange={[5, 0]}>
-                    <div className="pointer-events-none whitespace-nowrap rounded-[3px] bg-[#15803d] px-2.5 py-1 text-[11px] font-medium text-white shadow-md">
+                    <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/45 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
                       정수기 사용 가능
                     </div>
                   </Html>
@@ -6741,8 +6950,8 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
             </mesh>
             {isHovered && (
               <Html position={[0, 0.35, 0]} center zIndexRange={[5, 0]}>
-                <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#1c1613]/95 px-2.5 py-0.5 text-[11px] font-medium text-[#fde68a] border border-[#f59e0b]/50 shadow-md">
-                  👣 {wp.label} (클릭 이동)
+                <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/45 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-sm">
+                  {wp.label}
                 </div>
               </Html>
             )}

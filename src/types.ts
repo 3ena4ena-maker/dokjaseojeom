@@ -6,13 +6,12 @@ export type CharacterActionState =
   | 'READING';
 
 export type GenreId =
+  | 'dokja_curation'
+  | 'animation_comics'
   | 'novel'
-  | 'essay'
+  | 'marketing_indie'
   | 'humanities'
-  | 'art_design'
-  | 'independent'
-  | 'travel'
-  | 'animation';
+  | 'art_arch_travel';
 
 export interface GenreShelfData {
   id: GenreId;

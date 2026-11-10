@@ -25,30 +25,30 @@ import { SceneController } from './components/SceneController';
 import { BookstoreHUD } from './components/BookstoreHUD';
 
 export function App() {
-  // Mutable refs for 60fps 3D character & camera transforms
+  // Mutable refs for 60fps First-Person VR camera & gaze transforms
   const positionRef = useRef<[number, number, number]>([
     ...CHARACTER_START_POSITION,
   ]);
   const rotationYRef = useRef<number>(CHARACTER_START_ROTATION_Y);
-  const cameraYawRef = useRef<number>(0); // 0 means camera is at +Z looking toward -Z (from road toward Dokja entrance)
-  const cameraPitchRef = useRef<number>(0.28);
-  const cameraDistanceRef = useRef<number>(2.95);
+  const cameraYawRef = useRef<number>(0); // 0 means looking toward -Z (from road toward Dokja entrance)
+  const cameraPitchRef = useRef<number>(0.02);
+  const cameraDistanceRef = useRef<number>(3.1);
   const joystickVectorRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const navPathRef = useRef<Array<[number, number]>>([]);
   const pendingArrivalRef = useRef<(() => void) | null>(null);
   const interactionProgressRef = useRef<number>(0);
+  const interactionTimeoutRef = useRef<number | null>(null);
 
-  // React state for UI & Character State Machine
+  // React state for UI & First-Person VR State Machine
   const [characterPos, setCharacterPos] = useState<[number, number, number]>([
     ...CHARACTER_START_POSITION,
   ]);
-  const [cameraDistance, setCameraDistance] = useState<number>(2.95);
+  const [cameraDistance, setCameraDistance] = useState<number>(3.1);
   const [actionState, setActionState] = useState<CharacterActionState>('IDLE');
   const [isSeated, setIsSeated] = useState<boolean>(false);
-  const [isPositionLocked, setIsPositionLocked] = useState<boolean>(false);
-  const isPositionLockedRef = useRef<boolean>(false);
   const [activeSeat, setActiveSeat] = useState<SeatObjectData | null>(null);
   const [heldBook, setHeldBook] = useState<BookItem | null>(null);
+  const [reachingBook, setReachingBook] = useState<BookItem | null>(null);
   const [activeGenreShelf, setActiveGenreShelf] =
     useState<GenreShelfData | null>(null);
   // Explicit shelf browser modal (only opened on user action, never auto-blocking the side of the screen)
@@ -85,9 +85,41 @@ export function App() {
       return [];
     }
   });
-  const [toastMessage, setToastMessage] = useState<string | null>(
-    '독자서점에 오신 것을 환영합니다. 문 안으로 들어와 편하게 둘러보세요.'
-  );
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Bookshop Owner (`책방지기`): appears on a 5-minute (300s) cycle, staying seated for ~30 seconds
+  const ownerCycleAnchorRef = useRef<number | null>(null);
+  const [isInOwnerWindow, setIsInOwnerWindow] = useState<boolean>(false);
+  const [isOwnerTalkOpen, setIsOwnerTalkOpen] = useState<boolean>(false);
+  const [selectedOwnerQuestionIdx, setSelectedOwnerQuestionIdx] = useState<
+    number | null
+  >(null);
+
+  useEffect(() => {
+    if (characterPos[2] <= 6.55 && ownerCycleAnchorRef.current === null) {
+      ownerCycleAnchorRef.current = Date.now();
+      setIsInOwnerWindow(true);
+    }
+  }, [characterPos]);
+
+  useEffect(() => {
+    const OWNER_CYCLE_MS = 5 * 60 * 1000;
+    const OWNER_VISIBLE_MS = 30 * 1000;
+    const checkOwnerSchedule = () => {
+      const anchor = ownerCycleAnchorRef.current;
+      if (anchor === null) {
+        setIsInOwnerWindow(false);
+        return;
+      }
+      const elapsedInCycle = (Date.now() - anchor) % OWNER_CYCLE_MS;
+      setIsInOwnerWindow(elapsedInCycle < OWNER_VISIBLE_MS);
+    };
+    checkOwnerSchedule();
+    const timer = window.setInterval(checkOwnerSchedule, 500);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const isOwnerPresent = isInOwnerWindow || isOwnerTalkOpen;
 
   // Sync character Z coordinate to spatial BGM engine (soft/muffled on road -> warm fade-in inside store)
   useEffect(() => {
@@ -137,6 +169,27 @@ export function App() {
     setToastMessage(msg);
   }, []);
 
+  // Trigger the First-Person Right Arm reach animation (`책을 꺼내거나 숨은 그림을 찾을때 팔만 보이도록`)
+  const triggerFirstPersonArmReach = useCallback(
+    (book: BookItem | null, onComplete?: () => void) => {
+      if (interactionTimeoutRef.current !== null) {
+        window.clearTimeout(interactionTimeoutRef.current);
+      }
+      navPathRef.current = [];
+      pendingArrivalRef.current = null;
+      setReachingBook(book);
+      interactionProgressRef.current = 0;
+      setActionState('INTERACTING');
+      interactionTimeoutRef.current = window.setTimeout(() => {
+        interactionTimeoutRef.current = null;
+        setReachingBook(null);
+        setActionState(isSeated ? 'SITTING' : 'IDLE');
+        if (onComplete) onComplete();
+      }, 620);
+    },
+    [isSeated]
+  );
+
   // Unlock a hidden-object stamp mission when the user directly spots and taps it in 3D
   const unlockStampMission = useCallback((mission: StampMissionData) => {
     setCollectedStampIds((prev) => {
@@ -170,23 +223,27 @@ export function App() {
     (missionId: string) => {
       const matched = STAMP_MISSIONS.find((m) => m.id === missionId);
       if (matched) {
+        triggerFirstPersonArmReach(null);
         unlockStampMission(matched);
       }
     },
-    [unlockStampMission]
+    [triggerFirstPersonArmReach, unlockStampMission]
   );
 
-  // Unlock stamp if a linked book (e.g. 『작지만, 독자』) is selected
+  // Unlock stamp if a linked book or object (e.g. 『작지만, 독자』) is selected
   const unlockStampByLinkedId = useCallback(
-    (linkedId: string) => {
+    (linkedId: string, skipArmReach = false) => {
       const matched = STAMP_MISSIONS.find((m) =>
         m.linkedIds.includes(linkedId)
       );
       if (matched) {
+        if (!skipArmReach) {
+          triggerFirstPersonArmReach(null);
+        }
         unlockStampMission(matched);
       }
     },
-    [unlockStampMission]
+    [triggerFirstPersonArmReach, unlockStampMission]
   );
 
   const handleChangeAsmrLevels = useCallback(
@@ -243,53 +300,37 @@ export function App() {
     setActionState('IDLE');
   }, [activeSeat]);
 
-  // Smoothly turn character & camera gaze in place toward a world [targetX, targetZ] without moving position
+  // Smoothly turn First-Person VR gaze in place toward a world [targetX, targetZ, optional targetY]
   const rotateGazeInPlaceToward = useCallback(
-    (targetX: number, targetZ: number) => {
-      const [cx, , cz] = positionRef.current;
+    (targetX: number, targetZ: number, targetY?: number) => {
+      const [cx, cy, cz] = positionRef.current;
       const dx = targetX - cx;
       const dz = targetZ - cz;
-      if (Math.hypot(dx, dz) > 0.04) {
+      const horizDist = Math.hypot(dx, dz);
+      if (horizDist > 0.04) {
         const facingY = Math.atan2(dx, dz);
         rotationYRef.current = facingY;
+        let alignedYaw = (facingY - Math.PI) % (Math.PI * 2);
+        if (alignedYaw > Math.PI) alignedYaw -= Math.PI * 2;
+        if (alignedYaw < -Math.PI) alignedYaw += Math.PI * 2;
+        cameraYawRef.current = alignedYaw;
+      }
+      if (targetY !== undefined && horizDist > 0.1) {
+        const eyeY = cy + (isSeated ? 1.18 : 1.68);
+        const pitch = Math.max(
+          -0.55,
+          Math.min(0.55, -Math.atan2(targetY - eyeY, horizDist))
+        );
+        cameraPitchRef.current = pitch;
       }
     },
-    []
+    [isSeated]
   );
 
-  // Toggle In-Place Position Lock when clicking on the character itself (`자기 클릭`)
-  const handleTogglePositionLock = useCallback(() => {
-    navPathRef.current = [];
-    pendingArrivalRef.current = null;
-    handleClearNavVisuals();
-    if (actionState === 'WALKING') {
-      setActionState('IDLE');
-    }
-    setIsPositionLocked((prev) => {
-      const next = !prev;
-      isPositionLockedRef.current = next;
-      return next;
-    });
-  }, [actionState, handleClearNavVisuals]);
-
-  // Walk to a target [x, z] using A* obstacle avoidance and optionally run an action on arrival
+  // Smoothly glide First-Person VR viewpoint to a target [x, z] with natural gaze follow
   const walkToAndExecute = useCallback(
     (targetX: number, targetZ: number, onArrive?: () => void) => {
       if (actionState === 'INTERACTING') return;
-
-      // When locked in place (`자기 클릭 고정`), stay anchored at the current spot and only rotate gaze toward target!
-      if (isPositionLockedRef.current) {
-        navPathRef.current = [];
-        pendingArrivalRef.current = null;
-        handleClearNavVisuals();
-        if (onArrive) {
-          onArrive();
-        } else {
-          setActionState(isSeated ? 'SITTING' : 'IDLE');
-        }
-        rotateGazeInPlaceToward(targetX, targetZ);
-        return;
-      }
 
       let startX = positionRef.current[0];
       let startZ = positionRef.current[2];
@@ -304,7 +345,7 @@ export function App() {
       }
 
       const dist = Math.hypot(targetX - startX, targetZ - startZ);
-      if (dist < 0.32) {
+      if (dist < 0.35) {
         navPathRef.current = [];
         pendingArrivalRef.current = null;
         handleClearNavVisuals();
@@ -335,10 +376,10 @@ export function App() {
     ]
   );
 
-  // Triggered automatically when the character crosses from the outdoor road through the '독자' entrance door
+  // Triggered automatically when crossing from the outdoor road through the '독자' entrance door
   const handleEnteredStore = useCallback(() => {
     cameraYawRef.current = 0;
-    cameraPitchRef.current = 0.28;
+    cameraPitchRef.current = 0.02;
     cameraDistanceRef.current = 3.1;
     setCameraDistance(3.1);
     bookstoreBgm.triggerEnterStoreSwell();
@@ -356,7 +397,7 @@ export function App() {
     walkToAndExecute(0.15, 4.95, () => {
       rotationYRef.current = Math.PI;
       cameraYawRef.current = 0;
-      cameraPitchRef.current = 0.28;
+      cameraPitchRef.current = 0.02;
       cameraDistanceRef.current = 3.1;
       setCameraDistance(3.1);
       setActionState('IDLE');
@@ -371,7 +412,7 @@ export function App() {
     }
     rotationYRef.current = Math.PI;
     cameraYawRef.current = 0;
-    cameraPitchRef.current = 0.28;
+    cameraPitchRef.current = 0.02;
     cameraDistanceRef.current = 3.1;
     setCameraDistance(3.1);
     showToast('👁️ 내부 전체 시점으로 정렬했습니다.');
@@ -402,7 +443,7 @@ export function App() {
     [actionState, walkToAndExecute, showToast]
   );
 
-  // Genre Bookshelf Selection (walks to shelf and aligns gaze with the shelf without auto-blocking the screen)
+  // Genre Bookshelf Selection (smoothly moves to shelf and aligns gaze with the shelf)
   const handleSelectGenreShelf = useCallback(
     (shelf: GenreShelfData) => {
       if (actionState === 'INTERACTING') return;
@@ -416,6 +457,7 @@ export function App() {
         shelf.interactionPoint[2],
         () => {
           rotationYRef.current = shelf.interactionFacingY;
+          cameraPitchRef.current = 0.02;
           setActiveGenreShelf(shelf);
           setActionState('IDLE');
         }
@@ -424,14 +466,13 @@ export function App() {
     [actionState, walkToAndExecute, showToast]
   );
 
-  // Book Selection: 7-Step Process (Approach -> Reach Animation -> Hold in Hand -> Show Details)
+  // Book Selection: Smoothly approaches book -> First-Person Arm reaches out -> Hold in Hand -> Show Details
   const handleSelectBook = useCallback(
     (book: BookItem) => {
       if (actionState === 'INTERACTING') return;
       setBrowsingShelf(null);
-      unlockStampByLinkedId(book.id);
+      unlockStampByLinkedId(book.id, true);
 
-      // If already holding this exact book, open its details modal directly
       if (heldBook?.id === book.id) {
         setInspectingBook(book);
         return;
@@ -446,8 +487,6 @@ export function App() {
         book.interactionPoint[2],
         () => {
           rotationYRef.current = book.interactionFacingY;
-          interactionProgressRef.current = 0;
-          setActionState('INTERACTING');
           showToast(`✨ 책장에서 『${book.title}』 도서를 꺼냅니다...`);
 
           setTablePlacedBooks((prev) => {
@@ -460,15 +499,21 @@ export function App() {
             return next;
           });
 
-          setTimeout(() => {
+          triggerFirstPersonArmReach(book, () => {
             setHeldBook(book);
-            setActionState('IDLE');
             setInspectingBook(book);
-          }, 580);
+          });
         }
       );
     },
-    [actionState, heldBook, walkToAndExecute, showToast, unlockStampByLinkedId]
+    [
+      actionState,
+      heldBook,
+      walkToAndExecute,
+      showToast,
+      triggerFirstPersonArmReach,
+      unlockStampByLinkedId,
+    ]
   );
 
   // Return currently held book back to its bookshelf
@@ -503,6 +548,7 @@ export function App() {
         ];
         setCharacterPos([...positionRef.current]);
         rotationYRef.current = seat.seatFacingY;
+        cameraPitchRef.current = 0.04;
         setIsSeated(true);
         setActiveSeat(seat);
 
@@ -604,6 +650,7 @@ export function App() {
       setInspectingBook(null);
       setInspectingTable(null);
       setIsReadingModalOpen(false);
+      setIsOwnerTalkOpen(false);
 
       walkToAndExecute(story.approachPoint[0], story.approachPoint[2], () => {
         rotationYRef.current = story.approachFacingY;
@@ -614,6 +661,35 @@ export function App() {
     },
     [actionState, walkToAndExecute, unlockStampByLinkedId]
   );
+
+  // Talk to Bookshop Owner (`책방지기 말걸기`) when seated at the workspace table
+  const handleOpenOwnerTalk = useCallback(() => {
+    if (!isInOwnerWindow && !isOwnerTalkOpen) return;
+    setBrowsingShelf(null);
+    setInspectingBook(null);
+    setInspectingTable(null);
+    setInspectingStory(null);
+    setIsReadingModalOpen(false);
+    navPathRef.current = [];
+    pendingArrivalRef.current = null;
+    if (isSeated) {
+      setIsSeated(false);
+      setActiveSeat(null);
+    }
+    // Position First-Person VR viewpoint right in front of the workspace table so the owner's face & overhead bubble are clear
+    positionRef.current = [-2.45, 0, -1.85];
+    setCharacterPos([-2.45, 0, -1.85]);
+    rotateGazeInPlaceToward(-1.7, -3.1, 1.18);
+    if (!isOwnerTalkOpen) {
+      setSelectedOwnerQuestionIdx(null);
+    }
+    setIsOwnerTalkOpen(true);
+  }, [isInOwnerWindow, isOwnerTalkOpen, isSeated, rotateGazeInPlaceToward]);
+
+  const handleCloseOwnerTalk = useCallback(() => {
+    setIsOwnerTalkOpen(false);
+    setSelectedOwnerQuestionIdx(null);
+  }, []);
 
   // Walk directly to a signature stamp mission spot from the Stamp Tour card
   const handleWalkToStampMission = useCallback(
@@ -694,6 +770,7 @@ export function App() {
         setInspectingBook(null);
         setInspectingTable(null);
         setInspectingStory(null);
+        setIsOwnerTalkOpen(false);
         if (actionState === 'READING') {
           handleStopReading();
         }
@@ -733,10 +810,9 @@ export function App() {
     if (alignedYaw > Math.PI) alignedYaw -= Math.PI * 2;
     if (alignedYaw < -Math.PI) alignedYaw += Math.PI * 2;
     cameraYawRef.current = alignedYaw;
-    cameraPitchRef.current = 0.28;
-    const defaultDist = positionRef.current[2] > 6.55 ? 2.95 : 3.1;
-    cameraDistanceRef.current = defaultDist;
-    setCameraDistance(defaultDist);
+    cameraPitchRef.current = 0.02;
+    cameraDistanceRef.current = 3.1;
+    setCameraDistance(3.1);
   }, []);
 
   return (
@@ -744,7 +820,7 @@ export function App() {
       {/* Toast Notification Banner (Shown on desktop, and also on mobile when a Stamp or Timer event occurs) */}
       {toastMessage && (
         <div
-          className={`pointer-events-none fixed left-1/2 top-14 sm:top-16 z-40 -translate-x-1/2 max-w-[92vw] truncate rounded-full bg-[#191310]/92 px-3.5 py-1 text-[11px] sm:text-xs font-medium text-[#fde68a] shadow-xl border border-[#d4af37]/40 backdrop-blur-md transition-all ${
+          className={`pointer-events-none fixed left-1/2 top-14 sm:top-16 z-40 -translate-x-1/2 max-w-[92vw] truncate rounded-[6px] bg-black/45 px-3.5 py-1.5 text-xs text-white/95 shadow-md backdrop-blur-md transition-all ${
             toastMessage.startsWith('🔍') ||
             toastMessage.startsWith('🏅') ||
             toastMessage.startsWith('🎉') ||
@@ -763,7 +839,7 @@ export function App() {
       {/* 3D Interactive Bookstore Scene */}
       <Canvas
         shadows
-        camera={{ position: [0.15, 2.0, 11.4], fov: 56, near: 0.1, far: 55 }}
+        camera={{ position: [0.15, 1.72, 11.8], fov: 67, near: 0.08, far: 55 }}
       >
         <color attach="background" args={['#181310']} />
         <fog attach="fog" args={['#1d1612', 14, 30]} />
@@ -793,14 +869,9 @@ export function App() {
         />
 
         <Character3D
-          positionRef={positionRef}
-          rotationYRef={rotationYRef}
           actionState={actionState}
-          isSeated={isSeated}
-          heldBook={heldBook}
+          reachingBook={reachingBook}
           interactionProgressRef={interactionProgressRef}
-          isPositionLocked={isPositionLocked}
-          onTogglePositionLock={handleTogglePositionLock}
         />
 
         <BookstoreEnvironment3D
@@ -822,6 +893,10 @@ export function App() {
           onSelectWaypoint={handleSelectWaypoint}
           collectedStampIds={collectedStampIds}
           onFindHiddenStamp={handleFindHiddenStamp}
+          isOwnerPresent={isOwnerPresent}
+          isOwnerTalking={isOwnerTalkOpen}
+          selectedOwnerQuestionIdx={selectedOwnerQuestionIdx}
+          onOpenOwnerTalk={handleOpenOwnerTalk}
         />
       </Canvas>
 
@@ -875,6 +950,10 @@ export function App() {
         collectedStampIds={collectedStampIds}
         onWalkToStampMission={handleWalkToStampMission}
         onResetStamps={handleResetStamps}
+        isTalkingToOwner={isOwnerTalkOpen && isOwnerPresent}
+        selectedOwnerQuestionIdx={selectedOwnerQuestionIdx}
+        onSelectOwnerQuestion={setSelectedOwnerQuestionIdx}
+        onCloseOwnerTalk={handleCloseOwnerTalk}
       />
     </div>
   );

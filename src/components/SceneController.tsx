@@ -115,8 +115,8 @@ export const SceneController: React.FC<SceneControllerProps> = ({
   const lastSyncedCameraYawRef = useRef<number>(cameraYawRef.current);
   const lastSyncedCameraPitchRef = useRef<number>(cameraPitchRef.current);
 
-  const smoothLookAtRef = useRef(new THREE.Vector3(0.15, 1.32, 7.8));
-  const smoothCamPosRef = useRef(new THREE.Vector3(0.15, 2.55, 11.8));
+  const smoothLookAtRef = useRef(new THREE.Vector3(0.15, 1.68, 7.8));
+  const smoothCamPosRef = useRef(new THREE.Vector3(0.15, 1.72, 11.8));
   const proximityTimerRef = useRef(0);
   const posSyncTimerRef = useRef(0);
   const wasOutsideRef = useRef<boolean>(true);
@@ -212,11 +212,11 @@ export const SceneController: React.FC<SceneControllerProps> = ({
         targetCameraYawRef.current - dx * yawSensitivity
       );
       targetCameraPitchRef.current = Math.max(
-        -0.22,
-        Math.min(1.08, targetCameraPitchRef.current + dy * pitchSensitivity)
+        -0.75,
+        Math.min(0.8, targetCameraPitchRef.current + dy * pitchSensitivity)
       );
 
-      // Keep character facing aligned with the new in-place gaze so the camera never snaps back!
+      // Keep facing aligned with the new in-place VR gaze so the camera never snaps back!
       if (navPathRef.current.length === 0) {
         rotationYRef.current = normalizeAngle(
           targetCameraYawRef.current + Math.PI
@@ -463,7 +463,7 @@ export const SceneController: React.FC<SceneControllerProps> = ({
               }
             }
           } else {
-            const speed = 2.4;
+            const speed = 2.6;
             const step = Math.min(dist, speed * dt);
             const dirX = dx / dist;
             const dirZ = dz / dist;
@@ -525,8 +525,7 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       wasOutsideRef.current = true;
     }
 
-    // 4. Smooth In-Place Gaze Rotation & Permanent Gaze Retention (Never snaps back when stationary!)
-    // Detect if external code (e.g. reset camera button or entering store) explicitly set cameraYawRef / cameraPitchRef
+    // 4. First-Person VR Gaze & Eye-Level Camera Transform
     if (
       Math.abs(
         normalizeAngle(cameraYawRef.current - lastSyncedCameraYawRef.current)
@@ -541,7 +540,6 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       targetCameraPitchRef.current = cameraPitchRef.current;
     }
 
-    // Detect if character rotationYRef was changed by walking or arriving at a shelf/table/seat
     if (
       !isDraggingRef.current &&
       manualLookHoldTimerRef.current <= 0 &&
@@ -573,8 +571,8 @@ export const SceneController: React.FC<SceneControllerProps> = ({
     lastSyncedCameraYawRef.current = cameraYawRef.current;
     lastSyncedCameraPitchRef.current = cameraPitchRef.current;
 
-    // Aim lookTarget slightly above the scaled-down character (charY + 1.32)
-    const lookTargetY = charY + (isSeated ? 0.92 : 1.32);
+    // Eye-level height matched to the 4th bookshelf tier ('책장 4칸' ≈ 1.68m standing, 1.18m seated)
+    const lookTargetY = charY + (isSeated ? 1.18 : 1.68);
     const camDist = Math.max(0.9, Math.min(4.2, cameraDistanceRef.current));
     const pitch = cameraPitchRef.current;
     const yaw = cameraYawRef.current;
@@ -596,13 +594,12 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       camDist
     );
 
-    // Aspect-ratio adaptive FOV: on portrait mobile screens (aspect < 1.0), automatically widen
-    // vertical FOV so the horizontal view stays wide and the character looks smaller inside the room
+    // Default to the wide '한눈에 보기' panoramic FOV ratio both at the entrance and inside the store
     if (camera instanceof THREE.PerspectiveCamera) {
       const aspect = size.width / Math.max(1, size.height);
       const portraitBoost = aspect < 1.0 ? (1.0 - aspect) * 28 : 0;
       const zoomRatio = (camDist - 0.9) / (4.2 - 0.9);
-      const baseFov = charZ <= 6.35 ? 54 + zoomRatio * 20 : 58;
+      const baseFov = 54 + zoomRatio * 20;
       const targetFov = Math.min(88, baseFov + portraitBoost);
       if (Math.abs(camera.fov - targetFov) > 0.05) {
         camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6.0);
@@ -610,7 +607,6 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       }
     }
 
-    // Use matching lerp factor for both camera position and lookAt target so the viewing ray direction never warps
     const camLerp = Math.min(1, dt * (isManualLooking ? 16.0 : 7.5));
     smoothCamPosRef.current.lerp(
       new THREE.Vector3(safeCamX, safeCamY, safeCamZ),

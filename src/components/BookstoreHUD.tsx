@@ -3,11 +3,9 @@ import {
   Award,
   BookOpen,
   CheckCircle2,
-  CloudRain,
   Compass,
   DoorOpen,
   Eye,
-  Flame,
   HelpCircle,
   Info,
   Lamp,
@@ -18,7 +16,6 @@ import {
   RotateCcw,
   Sparkles,
   Timer,
-  UserCheck,
   Volume2,
   VolumeX,
   X,
@@ -43,14 +40,7 @@ import {
   TableObjectData,
   WaypointNode,
 } from '../types';
-
-interface GuestbookEntry {
-  id: string;
-  nickname: string;
-  message: string;
-  favBook: string;
-  date: string;
-}
+import { OWNER_QA_ITEMS } from './BookshopOwner3D';
 
 interface BookstoreHUDProps {
   characterPos: [number, number, number];
@@ -105,6 +95,10 @@ interface BookstoreHUDProps {
   collectedStampIds: string[];
   onWalkToStampMission: (mission: StampMissionData) => void;
   onResetStamps: () => void;
+  isTalkingToOwner?: boolean;
+  selectedOwnerQuestionIdx?: number | null;
+  onSelectOwnerQuestion?: (idx: number) => void;
+  onCloseOwnerTalk?: () => void;
 }
 
 export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
@@ -147,15 +141,16 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
   onEnterStoreFromRoad,
   bgmPlaying,
   onToggleBgm,
-  asmrLevels,
-  onChangeAsmrLevels,
   onReadingTimerComplete,
   collectedStampIds,
-  onWalkToStampMission,
   onResetStamps,
+  isTalkingToOwner = false,
+  selectedOwnerQuestionIdx = null,
+  onSelectOwnerQuestion,
+  onCloseOwnerTalk,
 }) => {
   const [showMinimap, setShowMinimap] = useState(false);
-  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(true);
   const [showPhotoGallery, setShowPhotoGallery] = useState(false);
   const [showTimerAsmrModal, setShowTimerAsmrModal] = useState(false);
   const [showStampTourModal, setShowStampTourModal] = useState(false);
@@ -167,8 +162,6 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
   const [timerRemainingSec, setTimerRemainingSec] = useState<number>(25 * 60);
   const [timerRunning, setTimerRunning] = useState<boolean>(false);
   const [completedSessions, setCompletedSessions] = useState<number>(0);
-  const [honoraryReaderName, setHonoraryReaderName] = useState<string>('');
-  const [honorarySigned, setHonorarySigned] = useState<boolean>(false);
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -192,53 +185,11 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const hasActiveAsmr =
-    asmrLevels.rain > 0.02 ||
-    asmrLevels.paper > 0.02 ||
-    asmrLevels.fireplace > 0.02;
-  const [guestbookEntries, setGuestbookEntries] = useState<GuestbookEntry[]>([
-    {
-      id: 'gb1',
-      nickname: '산책자',
-      message:
-        '도로에서 독자 간판 보고 계단 올라와 문을 열자마자 주황빛 천장과 크리스탈 샹들리에, 책장들이 한눈에 펼쳐져서 감탄했어요!',
-      favBook: '작지만, 독자',
-      date: '2026.11.06',
-    },
-    {
-      id: 'gb2',
-      nickname: '가죽과책',
-      message:
-        '오른쪽 벽에 붙은 추천 테이블과 안쪽 책장의 수제 가죽가방·와인들, 그리고 가죽공방 옆 큰 테이블까지 실제 독자서점 그대로네요.',
-      favBook: '소년이 온다',
-      date: '2026.11.05',
-    },
-  ]);
-  const [newGuestName, setNewGuestName] = useState('');
-  const [newGuestMsg, setNewGuestMsg] = useState('');
-
   const browsingShelfBooks = browsingShelf
     ? REPRESENTATIVE_BOOKS.filter((b) => b.genreId === browsingShelf.id)
     : [];
 
   const isOutsideOnRoad = characterPos[2] > 6.55;
-
-  const handleAddGuestbook = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGuestMsg.trim()) return;
-    setGuestbookEntries((prev) => [
-      {
-        id: `gb_${Date.now()}`,
-        nickname: newGuestName.trim() || '익명의 독자',
-        message: newGuestMsg.trim(),
-        favBook: heldBook?.title || '독자서점 공간',
-        date: '2026.11.06',
-      },
-      ...prev,
-    ]);
-    setNewGuestName('');
-    setNewGuestMsg('');
-  };
 
   // Convert character world [X: -4.6..4.6, Z: -6.8..10.2] to percentage on minimap
   const mapPercentX = Math.max(
@@ -251,35 +202,31 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
   );
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-40 flex flex-col justify-between p-2.5 sm:p-4">
+    <div className="pointer-events-none fixed inset-0 z-40 flex flex-col justify-between p-2 sm:p-4 break-keep">
       {/* ============================================================
-          SINGLE COMPACT TOP ROW: MINIMAL BRAND PILL + QUICK TOOLS
-          (Zoom controls hidden on mobile; Genre/Seat bar removed)
+          SINGLE COMPACT TOP ROW: BORDERLESS SEMI-TRANSPARENT BRAND & TOOLS
          ============================================================ */}
-      <div className="flex items-center justify-between gap-2">
-        {/* Left: Compact Brand Badge */}
-        <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-[#191310]/80 px-3 py-1.5 shadow-lg border border-[#d4af37]/25 backdrop-blur-md">
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#c85a28] text-white font-serif font-bold text-xs shadow-inner">
-            독자
-          </div>
-          <span className="font-serif text-xs sm:text-sm font-bold tracking-wide text-[#f8f1e5]">
+      <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+        {/* Left: Compact Brand Box (Removed '독자' square prefix, single-line '독자서점') */}
+        <div className="pointer-events-auto shrink-0 whitespace-nowrap flex items-center gap-1.5 rounded-[6px] bg-black/42 px-2.5 sm:px-3 py-1 sm:py-1.5 shadow-md backdrop-blur-md">
+          <span className="whitespace-nowrap text-xs sm:text-sm tracking-wide text-white/95">
             독자서점
           </span>
-          <span className="hidden md:inline-block text-[11px] text-[#cbbba8]">
-            · 3D 독립서점 & 가죽공방 딤프치
+          <span className="hidden md:inline-block whitespace-nowrap text-xs text-white/70">
+            · 독립서점 & 가죽공방 딤프치
           </span>
         </div>
 
-        {/* Right: Minimal Action Icons (Zoom Slider hidden on mobile; mobile uses 2-finger pinch) */}
-        <div className="pointer-events-auto flex items-center gap-1 rounded-full bg-[#191310]/80 px-2 py-1 shadow-lg border border-[#d4af37]/25 backdrop-blur-md">
+        {/* Right: Minimal Action Icons (No-wrap single-line buttons on mobile) */}
+        <div className="pointer-events-auto min-w-0 overflow-x-auto no-scrollbar flex items-center gap-0.5 sm:gap-1 rounded-[6px] bg-black/42 px-1.5 sm:px-2 py-1 shadow-md backdrop-blur-md">
           {isOutsideOnRoad ? (
             <button
               type="button"
               data-testid="enter-store-btn"
               onClick={onEnterStoreFromRoad}
-              className="flex items-center gap-1 rounded-full bg-[#c85a28] px-2.5 py-1 text-[11px] sm:text-xs font-bold text-white shadow hover:bg-[#e06630] transition"
+              className="shrink-0 whitespace-nowrap flex items-center gap-1 rounded-[4px] bg-white/20 px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs text-white hover:bg-white/30 transition cursor-pointer"
             >
-              <DoorOpen className="h-3.5 w-3.5" />
+              <DoorOpen className="h-3.5 w-3.5 shrink-0" />
               <span>입구 입장</span>
             </button>
           ) : (
@@ -288,21 +235,21 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               data-testid="panoramic-view-btn"
               onClick={onSetPanoramicInteriorView}
               title="독자 내부 한눈에 보기"
-              className="flex items-center gap-1 rounded-full bg-[#2a201b] px-2.5 py-1 text-[11px] sm:text-xs font-medium text-[#fde68a] hover:bg-[#c85a28] hover:text-white transition"
+              className="shrink-0 whitespace-nowrap flex items-center gap-1 rounded-[4px] bg-white/12 px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs text-white/90 hover:bg-white/25 hover:text-white transition cursor-pointer"
             >
-              <Maximize2 className="h-3 w-3" />
+              <Maximize2 className="h-3 w-3 shrink-0" />
               <span>한눈에 보기</span>
             </button>
           )}
 
-          {/* Desktop-only Zoom Controls (hidden on mobile as requested) */}
-          <div className="hidden sm:flex items-center gap-1 rounded-full bg-[#241c17] px-2 py-0.5 border border-[#3b2e26]">
+          {/* Desktop-only Zoom Controls */}
+          <div className="hidden sm:flex shrink-0 items-center gap-1 rounded-[4px] bg-white/10 px-2 py-0.5">
             <button
               type="button"
               data-testid="zoom-in-btn"
               onClick={() => onZoomCamera(-0.45)}
               title="공간 확대"
-              className="flex h-5 w-5 items-center justify-center rounded-full text-[#fde68a] hover:bg-[#c85a28] hover:text-white transition"
+              className="flex h-5 w-5 items-center justify-center rounded-[3px] text-white/85 hover:bg-white/20 hover:text-white transition cursor-pointer"
             >
               <ZoomIn className="h-3 w-3" />
             </button>
@@ -315,14 +262,14 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               value={cameraDistance}
               onChange={(e) => onSetCameraDistance(parseFloat(e.target.value))}
               aria-label="공간 확대 축소 슬라이더"
-              className="h-1 w-20 cursor-pointer accent-[#c85a28]"
+              className="h-1 w-20 cursor-pointer accent-white"
             />
             <button
               type="button"
               data-testid="zoom-out-btn"
               onClick={() => onZoomCamera(0.45)}
               title="공간 축소"
-              className="flex h-5 w-5 items-center justify-center rounded-full text-[#fde68a] hover:bg-[#c85a28] hover:text-white transition"
+              className="flex h-5 w-5 items-center justify-center rounded-[3px] text-white/85 hover:bg-white/20 hover:text-white transition cursor-pointer"
             >
               <ZoomOut className="h-3 w-3" />
             </button>
@@ -330,79 +277,69 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               type="button"
               onClick={onResetCamera}
               title="시점 초기화"
-              className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-[#e5d5c3] hover:bg-[#c85a28] hover:text-white transition"
+              className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-[3px] text-white/80 hover:bg-white/20 hover:text-white transition cursor-pointer"
             >
               <RotateCcw className="h-3 w-3" />
             </button>
           </div>
 
-          {/* Single Unified Sound On/Off Button (Jazz Piano BGM + Bookstore ASMR together) */}
+          {/* Unified Sound On/Off Button */}
           <button
             type="button"
             data-testid="bgm-toggle-btn"
             onClick={onToggleBgm}
-            title={
+            title={bgmPlaying ? '사운드 끄기' : '사운드 켜기'}
+            aria-label={bgmPlaying ? '사운드 끄기' : '사운드 켜기'}
+            className={`shrink-0 whitespace-nowrap flex h-6 w-6 md:h-auto md:w-auto items-center justify-center md:gap-1 rounded-[4px] md:px-2 md:py-1 text-xs transition cursor-pointer ${
               bgmPlaying
-                ? '배경음악 & ASMR 한 번에 끄기 (재즈 피아노·빗소리·책장·모닥불 재생 중)'
-                : '배경음악 & ASMR 한 번에 켜기 (재즈 피아노·빗소리·책장·모닥불)'
-            }
-            aria-label={
-              bgmPlaying ? '배경음악 및 ASMR 끄기' : '배경음악 및 ASMR 켜기'
-            }
-            className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold transition ${
-              bgmPlaying
-                ? 'bg-[#c85a28] text-white shadow-sm ring-1 ring-[#fde68a]/60'
-                : 'bg-[#2a201b] text-[#cbbba8] hover:bg-[#3a2d26] hover:text-white'
+                ? 'bg-white/25 text-white'
+                : 'bg-white/10 text-white/75 hover:bg-white/20 hover:text-white'
             }`}
           >
             {bgmPlaying ? (
-              <Volume2 className="h-3.5 w-3.5" />
+              <Volume2 className="h-3.5 w-3.5 shrink-0" />
             ) : (
-              <VolumeX className="h-3.5 w-3.5" />
+              <VolumeX className="h-3.5 w-3.5 shrink-0" />
             )}
             <span className="hidden md:inline">
-              {bgmPlaying ? '사운드 ON' : '사운드 OFF'}
+              {bgmPlaying ? '사운드 켜짐' : '사운드 꺼짐'}
             </span>
           </button>
 
-          {/* Feature #2: Reading Focus Timer Button */}
+          {/* Reading Focus Timer Button */}
           <button
             type="button"
             data-testid="timer-asmr-btn"
             onClick={() => setShowTimerAsmrModal(true)}
-            title="창가 독서 집중 타이머"
-            className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium transition ${
+            title="독서 타이머"
+            className={`shrink-0 whitespace-nowrap flex h-6 md:h-auto items-center justify-center gap-1 rounded-[4px] px-1.5 sm:px-2 md:py-1 text-xs transition cursor-pointer ${
               timerRunning
-                ? 'bg-amber-600 text-white shadow-sm ring-1 ring-[#fde68a]'
-                : 'bg-[#2a201b] text-[#fde68a] hover:bg-[#c85a28] hover:text-white'
+                ? 'bg-white/25 text-white'
+                : 'bg-white/10 text-white/85 hover:bg-white/20 hover:text-white'
             }`}
           >
-            <Timer className="h-3.5 w-3.5" />
+            <Timer className="h-3.5 w-3.5 shrink-0" />
             {timerRunning ? (
-              <span className="font-mono text-[10px] font-bold">
-                {formatTimer(timerRemainingSec)}
-              </span>
+              <span className="text-[11px] sm:text-xs">{formatTimer(timerRemainingSec)}</span>
             ) : (
               <span className="hidden md:inline">독서 타이머</span>
             )}
           </button>
 
-          {/* Feature #3: Dokja 5-Signature Stamp Tour Button */}
+          {/* Stamp Tour Button */}
           <button
             type="button"
             data-testid="stamp-tour-btn"
             onClick={() => setShowStampTourModal(true)}
-            title="독자서점 5대 시그니처 보물찾기 스탬프 투어"
-            className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold transition ${
-              collectedStampIds.length >= STAMP_MISSIONS.length
-                ? 'bg-amber-500 text-[#191310] shadow-sm ring-1 ring-white'
-                : collectedStampIds.length > 0
-                ? 'bg-[#c85a28]/90 text-white'
-                : 'bg-[#2a201b] text-[#fde68a] hover:bg-[#c85a28] hover:text-white'
+            title="숨은그림찾기"
+            className={`shrink-0 whitespace-nowrap flex h-6 md:h-auto items-center gap-0.5 sm:gap-1 rounded-[4px] px-1.5 sm:px-2 md:py-1 text-xs transition cursor-pointer ${
+              collectedStampIds.length > 0
+                ? 'bg-white/25 text-white'
+                : 'bg-white/10 text-white/85 hover:bg-white/20 hover:text-white'
             }`}
           >
-            <Award className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-[11px]">
+            <Award className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] sm:text-xs">
               {collectedStampIds.length}/{STAMP_MISSIONS.length}
             </span>
           </button>
@@ -410,20 +347,20 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
           <button
             type="button"
             onClick={() => setShowPhotoGallery(true)}
-            title="실제 서점 사진 & 이야기"
-            className="flex items-center gap-1 rounded-full bg-[#2a201b] px-2 py-1 text-[11px] font-medium text-[#fde68a] hover:bg-[#c85a28] hover:text-white transition"
+            title="공간 사진"
+            className="shrink-0 whitespace-nowrap flex h-6 w-6 md:h-auto md:w-auto items-center justify-center md:gap-1 rounded-[4px] bg-white/10 md:px-2 md:py-1 text-xs text-white/85 hover:bg-white/20 hover:text-white transition cursor-pointer"
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden md:inline">실제 사진</span>
           </button>
           <button
             type="button"
             onClick={() => setShowMinimap((v) => !v)}
             title="평면도 지도"
-            className={`flex h-6 w-6 items-center justify-center rounded-full transition ${
+            className={`shrink-0 flex h-6 w-6 items-center justify-center rounded-[4px] transition cursor-pointer ${
               showMinimap
-                ? 'bg-[#c85a28] text-white'
-                : 'bg-[#2a201b] text-[#e5d5c3] hover:bg-[#3a2d26]'
+                ? 'bg-white/25 text-white'
+                : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'
             }`}
           >
             <Compass className="h-3.5 w-3.5" />
@@ -431,8 +368,8 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
           <button
             type="button"
             onClick={() => setShowGuideModal(true)}
-            title="조작 도움말"
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2a201b] text-[#e5d5c3] hover:bg-[#c85a28] hover:text-white transition"
+            title="도움말"
+            className="shrink-0 flex h-6 w-6 items-center justify-center rounded-[4px] bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition cursor-pointer"
           >
             <HelpCircle className="h-3.5 w-3.5" />
           </button>
@@ -440,41 +377,85 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
       </div>
 
       {/* ============================================================
-          MIDDLE AREA: OPTIONAL MINIMAP OVERLAY (Hidden by default)
+          MIDDLE AREA: OPTIONAL MINIMAP & FIRST-PERSON OWNER TALK BUBBLE
          ============================================================ */}
-      <div className="my-auto flex items-start justify-end">
+      <div className="my-auto flex flex-col items-end justify-center gap-2">
+        {isTalkingToOwner && (
+          <div className="pointer-events-auto ml-auto flex flex-col items-end break-keep">
+            <div className="w-[225px] sm:w-[270px] rounded-2xl bg-neutral-950/82 p-3 sm:p-3.5 text-white shadow-2xl backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xs sm:text-sm text-white">말걸기</span>
+                  <span className="text-[11px] text-white/65">
+                    가장 많이 질문하는 것들
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={onCloseOwnerTalk}
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/14 text-white/80 hover:bg-white/25 hover:text-white transition cursor-pointer"
+                  aria-label="말걸기 닫기"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {OWNER_QA_ITEMS.map((item, idx) => {
+                  const isSelected = selectedOwnerQuestionIdx === idx;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => onSelectOwnerQuestion?.(idx)}
+                      className={`rounded-xl px-2.5 py-1.5 text-left text-xs transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-white/28 text-white shadow-sm'
+                          : 'bg-white/10 text-white/90 hover:bg-white/20 hover:text-white'
+                      }`}
+                    >
+                      {item.question}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="mr-6 h-0 w-0 border-x-[7px] border-t-[8px] border-x-transparent border-t-neutral-950/82" />
+          </div>
+        )}
+
         {showMinimap && (
-          <div className="pointer-events-auto ml-auto flex flex-col rounded-2xl bg-[#191310]/90 p-2.5 shadow-2xl border border-[#d4af37]/30 backdrop-blur-md w-48">
-            <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-[#fde68a] flex items-center gap-1">
-                <MapPin className="h-3 w-3 text-[#c85a28]" /> 독자서점 평면도
+          <div className="pointer-events-auto ml-auto flex flex-col rounded-xl bg-neutral-950/65 p-3 shadow-xl backdrop-blur-xl w-48">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs text-white/95 flex items-center gap-1">
+                <MapPin className="h-3 w-3 text-white/80" /> 독자서점 평면도
               </span>
               <button
                 type="button"
                 onClick={() => setShowMinimap(false)}
-                className="text-[10px] text-[#a8a29e] hover:text-white"
+                className="text-xs text-white/60 hover:text-white cursor-pointer"
               >
                 닫기
               </button>
             </div>
-            <div className="relative h-56 w-full rounded-xl bg-[#27201c] border border-[#3e322b] overflow-hidden">
-              <div className="absolute left-[26%] top-[48%] h-[18%] w-[46%] rounded bg-[#7c1d1d]/50 border border-[#d8c3a5]/30" />
-              <div className="absolute left-[46%] top-[10%] h-[20%] w-[36%] rounded bg-[#1e293b]/60 border border-[#b39b6e]/30" />
-              <div className="absolute left-0 top-[44%] h-[24%] w-[9%] bg-[#7c4a21] flex items-center justify-center text-[7px] text-amber-200 [writing-mode:vertical-rl]">
-                여행·독립출판
+            <div className="relative h-56 w-full rounded-lg bg-white/8 overflow-hidden">
+              <div className="absolute left-[26%] top-[48%] h-[18%] w-[46%] rounded bg-white/10" />
+              <div className="absolute left-[46%] top-[10%] h-[20%] w-[36%] rounded bg-white/10" />
+              <div className="absolute left-0 top-[44%] h-[24%] w-[10%] bg-white/15 flex items-center justify-center text-[8px] text-white/90 [writing-mode:vertical-rl]">
+                독자 추천 도서
               </div>
-              <div className="absolute right-0 top-[6%] h-[66%] w-[10%] bg-[#59351c] flex items-center justify-center text-[7px] text-amber-200 [writing-mode:vertical-rl]">
+              <div className="absolute right-0 top-[6%] h-[66%] w-[10%] bg-white/15 flex items-center justify-center text-[8px] text-white/90 [writing-mode:vertical-rl]">
                 메인 6단 서가
               </div>
-              <div className="absolute right-[10%] top-[36%] h-[8%] w-[26%] rounded-sm bg-[#8b5a2b] border border-amber-500/40 flex items-center justify-center text-[7px] text-white">
-                추천테이블
+              <div className="absolute right-[10%] top-[36%] h-[8%] w-[26%] rounded-sm bg-white/18 flex items-center justify-center text-[8px] text-white">
+                추천 도서 테이블
               </div>
-              <div className="absolute left-[4%] top-[10%] h-[20%] w-[38%] rounded-sm bg-[#6e4423]/80 border border-amber-500/30 flex items-center justify-center text-[7px] text-amber-100 text-center leading-tight">
-                딤프치 & 큰테이블
+              <div className="absolute left-[4%] top-[10%] h-[20%] w-[38%] rounded-sm bg-white/15 flex items-center justify-center text-[8px] text-white/90 text-center leading-tight">
+                딤프치 & 독서테이블
               </div>
-              <div className="absolute inset-x-0 top-[76%] h-[2%] bg-[#8b3a2b]" />
-              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded bg-black/60 px-1.5 py-0.5 text-[7px] text-[#fde68a]">
-                ▲ 도로 & 독자 입구
+              <div className="absolute inset-x-0 top-[76%] h-[2%] bg-white/25" />
+              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded bg-black/50 px-1.5 py-0.5 text-[8px] text-white/90">
+                도로 & 입구
               </div>
 
               {WAYPOINT_NODES.map((wp) => {
@@ -487,7 +468,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                     title={wp.label}
                     onClick={() => onSelectWaypoint(wp)}
                     style={{ left: `${wx}%`, top: `${wy}%` }}
-                    className="absolute -translate-x-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-amber-400/70 hover:bg-amber-300 hover:scale-125 transition ring-2 ring-black/40"
+                    className="absolute -translate-x-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-white/75 hover:bg-white hover:scale-125 transition cursor-pointer"
                   />
                 );
               })}
@@ -497,7 +478,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                 className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center"
               >
                 <span className="absolute h-4 w-4 animate-ping rounded-full bg-sky-400/50" />
-                <span className="relative h-2.5 w-2.5 rounded-full bg-sky-400 ring-2 ring-white shadow" />
+                <span className="relative h-2.5 w-2.5 rounded-full bg-sky-400 shadow" />
               </div>
             </div>
           </div>
@@ -505,11 +486,11 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
       </div>
 
       {/* ============================================================
-          BOTTOM AREA: COMPACT D-PAD & SLIM INTERACTION PILL
+          BOTTOM AREA: COMPACT D-PAD & BORDERLESS SEMI-TRANSPARENT BAR
          ============================================================ */}
       <div className="flex items-end justify-between gap-2">
         {/* Compact Semi-Transparent Mobile Touch D-Pad */}
-        <div className="pointer-events-auto flex sm:hidden flex-col items-center gap-0.5 rounded-2xl bg-[#191310]/65 p-1.5 border border-[#d4af37]/25 backdrop-blur-xs">
+        <div className="pointer-events-auto flex sm:hidden flex-col items-center gap-0.5 rounded-xl bg-black/42 p-1.5 backdrop-blur-md">
           <button
             type="button"
             onPointerDown={() => {
@@ -521,7 +502,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
             onPointerLeave={() => {
               joystickVectorRef.current = { x: 0, y: 0 };
             }}
-            className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2a201b]/90 text-xs font-bold text-[#fde68a] active:bg-[#c85a28]"
+            className="flex h-7 w-7 items-center justify-center rounded-md bg-white/15 text-xs text-white active:bg-white/30"
           >
             ▲
           </button>
@@ -537,7 +518,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               onPointerLeave={() => {
                 joystickVectorRef.current = { x: 0, y: 0 };
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2a201b]/90 text-xs font-bold text-[#fde68a] active:bg-[#c85a28]"
+              className="flex h-7 w-7 items-center justify-center rounded-md bg-white/15 text-xs text-white active:bg-white/30"
             >
               ◀
             </button>
@@ -552,7 +533,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               onPointerLeave={() => {
                 joystickVectorRef.current = { x: 0, y: 0 };
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2a201b]/90 text-xs font-bold text-[#fde68a] active:bg-[#c85a28]"
+              className="flex h-7 w-7 items-center justify-center rounded-md bg-white/15 text-xs text-white active:bg-white/30"
             >
               ▼
             </button>
@@ -567,27 +548,27 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               onPointerLeave={() => {
                 joystickVectorRef.current = { x: 0, y: 0 };
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2a201b]/90 text-xs font-bold text-[#fde68a] active:bg-[#c85a28]"
+              className="flex h-7 w-7 items-center justify-center rounded-md bg-white/15 text-xs text-white active:bg-white/30"
             >
               ▶
             </button>
           </div>
         </div>
 
-        {/* Center/Right Compact Contextual Pills */}
+        {/* Center/Right Compact Contextual Boxes */}
         <div className="mx-auto flex flex-col items-center gap-1.5">
           {/* Held Book Compact Bar */}
           {heldBook && (
-            <div className="pointer-events-auto flex flex-wrap items-center gap-2 rounded-full bg-[#1f1713]/92 px-3 py-1.5 shadow-xl border border-[#e09f3e]/50 backdrop-blur-md">
-              <span className="truncate max-w-[140px] sm:max-w-[220px] font-serif text-xs font-bold text-[#fde68a]">
-                📕 『{heldBook.title}』
+            <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 rounded-[6px] bg-black/48 px-3 py-1.5 shadow-md backdrop-blur-md">
+              <span className="truncate max-w-[130px] sm:max-w-[220px] text-xs text-white/95">
+                『{heldBook.title}』
               </span>
 
               {actionState === 'READING' ? (
                 <button
                   type="button"
                   onClick={onStopReading}
-                  className="rounded-full bg-rose-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-rose-500 transition"
+                  className="whitespace-nowrap shrink-0 rounded-[4px] bg-white/20 px-2.5 py-1 text-xs text-white hover:bg-white/30 transition cursor-pointer"
                 >
                   책 덮기
                 </button>
@@ -595,7 +576,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                 <button
                   type="button"
                   onClick={onStartReading}
-                  className="rounded-full bg-[#c85a28] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#e06630] transition"
+                  className="whitespace-nowrap shrink-0 rounded-[4px] bg-white/20 px-2.5 py-1 text-xs text-white hover:bg-white/30 transition cursor-pointer"
                 >
                   책 읽기
                 </button>
@@ -605,73 +586,73 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                 <button
                   type="button"
                   onClick={onSitAndReadNearest}
-                  className="rounded-full bg-purple-700/90 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-purple-600 transition"
+                  className="whitespace-nowrap shrink-0 rounded-[4px] bg-white/15 px-2.5 py-1 text-xs text-white/90 hover:bg-white/25 transition cursor-pointer"
                 >
-                  🪑 앉아서 읽기
+                  앉아서 읽기
                 </button>
               )}
 
               <button
                 type="button"
                 onClick={() => onSelectBook(heldBook)}
-                className="rounded-full bg-[#2e231d] px-2 py-1 text-[11px] text-[#fde68a] hover:bg-[#3d2f28] transition"
+                className="shrink-0 rounded-[4px] bg-white/12 px-2 py-1 text-xs text-white/90 hover:bg-white/22 transition cursor-pointer"
               >
-                <Info className="h-3 w-3" />
+                <Info className="h-3.5 w-3.5" />
               </button>
 
               <button
                 type="button"
                 onClick={onReturnHeldBook}
-                className="rounded-full bg-[#2a201b] px-2 py-1 text-[11px] text-[#cbbba8] hover:text-white transition"
+                className="whitespace-nowrap shrink-0 rounded-[4px] bg-white/12 px-2 py-1 text-xs text-white/80 hover:bg-white/22 hover:text-white transition cursor-pointer"
               >
                 꽂기
               </button>
             </div>
           )}
 
-          {/* Seated Compact Pill */}
+          {/* Seated Compact Box */}
           {isSeated && activeSeat && (
-            <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5 rounded-full bg-purple-950/90 px-3 py-1.5 shadow-lg border border-purple-400/40 backdrop-blur-md">
-              <span className="text-[11px] font-medium text-purple-100">
-                🪑 {activeSeat.name} 착석 중
+            <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5 rounded-[6px] bg-black/48 px-3 py-1.5 shadow-md backdrop-blur-md">
+              <span className="whitespace-nowrap text-xs text-white/95">
+                {activeSeat.name} 착석 중
               </span>
               {heldBook && actionState !== 'READING' && (
                 <button
                   type="button"
                   onClick={onStartReading}
-                  className="rounded-full bg-[#c85a28] px-2.5 py-0.5 text-[11px] font-semibold text-white"
+                  className="whitespace-nowrap shrink-0 rounded-[4px] bg-white/20 px-2.5 py-0.5 text-xs text-white hover:bg-white/30 transition cursor-pointer"
                 >
-                  📖 읽기
+                  읽기
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => setShowTimerAsmrModal(true)}
-                className="rounded-full bg-amber-600/90 px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-amber-500 transition"
+                className="whitespace-nowrap shrink-0 rounded-[4px] bg-white/15 px-2.5 py-0.5 text-xs text-white/90 hover:bg-white/25 transition cursor-pointer"
               >
-                🌧️ 독서 타이머·ASMR
+                독서 타이머
               </button>
               <button
                 type="button"
                 onClick={onStandUp}
-                className="rounded-full bg-purple-700 px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-purple-600"
+                className="whitespace-nowrap shrink-0 rounded-[4px] bg-white/20 px-2.5 py-0.5 text-xs text-white hover:bg-white/30 transition cursor-pointer"
               >
                 일어나기
               </button>
             </div>
           )}
 
-          {/* Compact 1-Line Contextual Prompt Pill (only for nearby book, chair, or table) */}
+          {/* Compact 1-Line Contextual Prompt Box */}
           {activePrompt && actionState !== 'INTERACTING' && (
             <button
               type="button"
               onClick={onTriggerPromptAction}
-              className="pointer-events-auto flex items-center gap-2 rounded-full bg-[#191310]/90 px-3.5 py-1.5 shadow-xl border border-[#e09f3e] hover:bg-[#c85a28] transition"
+              className="pointer-events-auto flex items-center gap-2 rounded-[6px] bg-black/48 px-3.5 py-1.5 shadow-md backdrop-blur-md hover:bg-black/62 transition cursor-pointer"
             >
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#e09f3e] text-[10px] font-extrabold text-[#191310]">
+              <span className="flex h-5 px-1.5 items-center justify-center rounded-[3px] bg-white/20 text-[11px] text-white">
                 {activePrompt.keyHint}
               </span>
-              <span className="text-xs font-bold text-[#f8f1e5] truncate max-w-[200px] sm:max-w-xs">
+              <span className="text-xs text-white/95 truncate max-w-[200px] sm:max-w-xs">
                 {activePrompt.label}
               </span>
             </button>
@@ -680,212 +661,196 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
       </div>
 
       {/* ============================================================
-          MODAL 0: ON-DEMAND SHELF BOOK BROWSER
+          MODAL 0: ON-DEMAND SHELF BOOK BROWSER (Borderless Semi-Transparent)
          ============================================================ */}
       {browsingShelf && !inspectingBook && !isReadingModalOpen && (
-        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-xs">
-          <div className="relative w-full max-w-md rounded-3xl bg-[#191310] p-5 text-[#f5efe6] shadow-2xl border border-[#d97736]/55">
+        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-md rounded-2xl bg-neutral-950/68 p-6 text-white shadow-2xl backdrop-blur-xl">
             <button
               type="button"
               onClick={onCloseBrowsingShelf}
-              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/12 text-white/80 hover:bg-white/25 hover:text-white transition cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
 
-            <div className="flex items-center gap-2">
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: browsingShelf.accentColor }}
-              />
-              <span className="text-[11px] font-semibold tracking-wider text-[#e09f3e]">
-                {browsingShelf.englishName}
-              </span>
-              <span className="rounded-lg bg-[#2a201b] px-2 py-0.5 text-[10px] text-[#cbbba8] border border-[#3d2f28]">
-                {browsingShelf.locationLabel}
-              </span>
-            </div>
-
-            <h2 className="mt-1 font-serif text-lg font-bold text-[#f8f1e5]">
-              {browsingShelf.name} 서가
-            </h2>
-            <p className="mt-1 text-xs leading-relaxed text-[#dfd5c7]">
+            <h2 className="text-xl text-white">{browsingShelf.name}</h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-white/80">
               {browsingShelf.description}
             </p>
 
-            <div className="mt-3.5 border-t border-[#362a23] pt-3">
-              <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-[#fde68a]">
-                <span>
-                  ✨ 선택 가능한 대표 도서 ({browsingShelfBooks.length}권)
-                </span>
-                <span className="text-[10px] font-normal text-[#b8a99a]">
-                  클릭하여 책장에서 꺼내기
-                </span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                {browsingShelfBooks.map((book) => {
-                  const isCurrentlyHeld = heldBook?.id === book.id;
-                  return (
-                    <button
-                      key={book.id}
-                      type="button"
-                      data-testid={`book-btn-${book.id}`}
-                      onClick={() => {
-                        onCloseBrowsingShelf();
-                        onSelectBook(book);
-                      }}
-                      className={`group flex items-center justify-between rounded-xl p-2.5 text-left transition ${
-                        isCurrentlyHeld
-                          ? 'bg-[#c85a28]/30 border border-[#c85a28] text-white'
-                          : 'bg-[#241c17] hover:bg-[#332720] border border-transparent hover:border-[#d97736]/40'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div
-                          className="h-9 w-7 flex-shrink-0 rounded shadow-sm border border-white/15 flex items-center justify-center text-[10px] font-serif font-bold"
-                          style={{
-                            backgroundColor: book.coverColor,
-                            color: book.textColor,
-                          }}
-                        >
-                          책
+            <div className="mt-4 flex flex-col gap-2">
+              {browsingShelfBooks.map((book) => {
+                const isCurrentlyHeld = heldBook?.id === book.id;
+                return (
+                  <button
+                    key={book.id}
+                    type="button"
+                    data-testid={`book-btn-${book.id}`}
+                    onClick={() => {
+                      onCloseBrowsingShelf();
+                      onSelectBook(book);
+                    }}
+                    className={`group flex items-center justify-between rounded-xl p-2.5 text-left transition cursor-pointer ${
+                      isCurrentlyHeld
+                        ? 'bg-white/22 text-white'
+                        : 'bg-white/8 hover:bg-white/16 text-white/95'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="h-9 w-7 flex-shrink-0 rounded shadow-sm flex items-center justify-center text-[11px]"
+                        style={{
+                          backgroundColor: book.coverColor,
+                          color: book.textColor,
+                        }}
+                      >
+                        책
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm text-white">
+                          {book.title}
                         </div>
-                        <div className="min-w-0">
-                          <div className="truncate text-xs font-semibold text-[#f8f1e5] group-hover:text-[#fde68a]">
-                            {book.title}
-                          </div>
-                          <div className="truncate text-[11px] text-[#b8a99a]">
-                            {book.author} · {book.publisher}
-                          </div>
+                        <div className="truncate text-xs text-white/65">
+                          {book.author} · {book.publisher}
                         </div>
                       </div>
-                      <span className="ml-2 flex-shrink-0 rounded-lg bg-[#c85a28] px-2.5 py-1 text-[11px] font-medium text-white shadow-sm group-hover:bg-[#e06630]">
-                        {isCurrentlyHeld ? '들고 있음' : '꺼내기'}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+                    </div>
+                    <span className="ml-2 flex-shrink-0 rounded-lg bg-white/18 px-2.5 py-1 text-xs text-white group-hover:bg-white/28 transition">
+                      {isCurrentlyHeld ? '들고 있음' : '꺼내기'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
       {/* ============================================================
-          MODAL 1: BOOK COVER & DETAILED INFORMATION PANEL
+          MODAL 1: BOOK COVER & 2-LINE INTRODUCTION POPUP (Borderless Semi-Transparent)
          ============================================================ */}
       {inspectingBook && !isReadingModalOpen && (
-        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-y-auto rounded-3xl bg-[#1b1411] p-6 text-[#f5efe6] shadow-2xl border border-[#d97736]/50">
+        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl bg-neutral-950/68 p-6 text-white shadow-2xl backdrop-blur-xl">
             <button
               type="button"
               onClick={onCloseBookDetail}
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/12 text-white/80 hover:bg-white/25 hover:text-white transition cursor-pointer"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
 
-            <div className="flex flex-col sm:flex-row gap-6">
-              <div className="flex flex-col items-center">
-                <div
-                  className="relative flex h-64 w-44 flex-col justify-between rounded-r-xl rounded-l-sm p-4 shadow-2xl border border-white/15"
-                  style={{
-                    backgroundColor: inspectingBook.coverColor,
-                    color: inspectingBook.textColor,
-                    boxShadow: `-6px 8px 20px rgba(0,0,0,0.6), inset 6px 0 12px rgba(255,255,255,0.12)`,
-                  }}
-                >
-                  <div className="text-[10px] font-semibold tracking-widest uppercase opacity-75">
-                    DOKJA CURATION · {inspectingBook.genreName}
-                  </div>
-                  <div className="my-auto py-2">
-                    <div className="font-serif text-lg font-bold leading-snug">
-                      {inspectingBook.title}
-                    </div>
-                    <div className="mt-2 text-xs opacity-85">
-                      {inspectingBook.author}
-                    </div>
-                  </div>
+            <div className="flex flex-col sm:flex-row items-center sm:items-stretch gap-6">
+              {/* Book Cover */}
+              <div className="flex-shrink-0">
+                {inspectingBook.id === 'book_tokyo_den' ? (
                   <div
-                    className="rounded px-2 py-1 text-[10px] font-bold tracking-wide"
+                    className="relative flex h-52 w-44 flex-col justify-between overflow-hidden rounded-r-md rounded-l-[2px] bg-white shadow-2xl"
                     style={{
-                      backgroundColor: inspectingBook.accentColor,
-                      color: '#ffffff',
+                      boxShadow:
+                        '-6px 8px 20px rgba(0,0,0,0.45), inset 4px 0 8px rgba(0,0,0,0.06)',
                     }}
                   >
-                    {inspectingBook.publisher} · {inspectingBook.publishedYear}
+                    <div className="pointer-events-none absolute inset-y-0 left-2 w-[1px] bg-black/10" />
+                    {/* Crisp White Upper Margin with Centered '東京傳' */}
+                    <div className="flex flex-col items-center justify-center pt-5 pb-3 text-neutral-900">
+                      <div className="text-base tracking-[0.22em]">東京傳</div>
+                      <div className="mt-0.5 text-[11px] text-neutral-500">
+                        박근태 사진집
+                      </div>
+                    </div>
+                    {/* Lower Two-Thirds Tokyo Dusk Street Photo Composition */}
+                    <div className="relative mx-2 mb-2 flex-1 overflow-hidden rounded-[2px] bg-gradient-to-b from-slate-700 via-stone-700 to-neutral-900">
+                      {/* Warm Storefront Window Glows in Background */}
+                      <div className="absolute inset-x-2 top-3 flex justify-between gap-1.5 opacity-85">
+                        <div className="h-9 flex-1 rounded-[1px] bg-amber-200/45" />
+                        <div className="h-9 flex-1 rounded-[1px] bg-orange-200/35" />
+                        <div className="h-9 flex-1 rounded-[1px] bg-sky-200/30" />
+                      </div>
+                      {/* Street Silver Car Silhouette & Pedestrians at Dusk */}
+                      <div className="absolute inset-x-3 bottom-5 h-7 rounded-t-md bg-slate-300/65" />
+                      <div className="absolute bottom-0 left-5 h-11 w-4 rounded-t-full bg-neutral-950/90" />
+                      <div className="absolute bottom-0 left-11 h-12 w-5 rounded-t-full bg-amber-800/85" />
+                      <div className="absolute bottom-0 right-6 h-10 w-4 rounded-t-full bg-neutral-900/90" />
+                    </div>
                   </div>
-                </div>
-                <span className="mt-2 text-[11px] text-[#fde68a] flex items-center gap-1">
-                  <UserCheck className="h-3.5 w-3.5" /> 현재 캐릭터가 손에 들고 있는 도서
-                </span>
+                ) : (
+                  <div
+                    className="relative flex h-56 w-40 flex-col justify-between overflow-hidden rounded-r-lg rounded-l-[2px] p-4 shadow-2xl"
+                    style={{
+                      backgroundColor: inspectingBook.coverColor,
+                      color: inspectingBook.textColor,
+                      boxShadow:
+                        '-6px 8px 20px rgba(0,0,0,0.45), inset 5px 0 10px rgba(0,0,0,0.08)',
+                    }}
+                  >
+                    {/* Subtle Book Spine Crease */}
+                    <div className="pointer-events-none absolute inset-y-0 left-2 w-[1px] bg-black/12" />
+
+                    <div className="pl-1.5">
+                      <div className="text-base leading-snug">
+                        {inspectingBook.title}
+                      </div>
+                      <div className="mt-1 text-xs opacity-75">
+                        {inspectingBook.author}
+                      </div>
+                    </div>
+
+                    {/* Minimalist Cover Motif Illustration */}
+                    <div className="my-auto flex items-center justify-center py-2">
+                      <div
+                        className="flex h-16 w-16 items-center justify-center rounded-full opacity-85"
+                        style={{
+                          backgroundColor: `${inspectingBook.accentColor}22`,
+                        }}
+                      >
+                        <div
+                          className="h-8 w-8 rounded-sm rotate-12"
+                          style={{ backgroundColor: inspectingBook.accentColor }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Bottom Obi Band */}
+                    <div
+                      className="-mx-4 -mb-4 px-4 py-2 text-[11px]"
+                      style={{
+                        backgroundColor: inspectingBook.accentColor,
+                        color: '#ffffff',
+                      }}
+                    >
+                      {inspectingBook.publisher}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-[#c85a28] px-2.5 py-0.5 text-xs font-semibold text-white">
-                      {inspectingBook.genreName}
-                    </span>
-                    <span className="text-xs text-[#b8a99a]">
-                      ISBN {inspectingBook.isbn}
-                    </span>
+              {/* 2-Line Concise Introduction & Actions */}
+              <div className="flex-1 flex flex-col justify-between text-center sm:text-left">
+                <div className="pr-0 sm:pr-6">
+                  <div className="text-xs text-white/60">
+                    {inspectingBook.genreName}
                   </div>
-
-                  <h2 className="mt-2 font-serif text-2xl font-bold text-[#f8f1e5]">
+                  <h2 className="mt-1 text-xl text-white">
                     {inspectingBook.title}
                   </h2>
-                  <p className="mt-0.5 text-sm text-[#d4a359]">
-                    {inspectingBook.author} 지음 · {inspectingBook.publisher} (
-                    {inspectingBook.publishedYear})
+                  <p className="mt-0.5 text-xs text-white/70">
+                    {inspectingBook.author} · {inspectingBook.publisher}
                   </p>
 
-                  <div className="mt-3 rounded-xl bg-[#261d18] p-3 border border-[#3d2f28]">
-                    <div className="text-[11px] font-semibold text-[#fde68a]">
-                      📍 독자서점 내 실제 비치 위치
-                    </div>
-                    <div className="mt-0.5 text-xs text-[#dfd5c7]">
-                      {inspectingBook.realSpotDescription}
-                    </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <h3 className="text-xs font-semibold text-[#e09f3e]">
-                      도서 소개
-                    </h3>
-                    <p className="mt-1 text-xs leading-relaxed text-[#e5ddd3]">
-                      {inspectingBook.summary}
-                    </p>
-                  </div>
-
-                  <div className="mt-3 rounded-xl bg-[#231b16] p-3 border-l-4 border-[#c85a28]">
-                    <div className="text-xs font-semibold text-[#fde68a]">
-                      💬 독자서점 책방지기의 노트
-                    </div>
-                    <p className="mt-1 text-xs leading-relaxed text-[#d6c7b2]">
-                      {inspectingBook.curatorNote}
-                    </p>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {inspectingBook.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-lg bg-[#2a201b] px-2 py-0.5 text-[11px] text-[#cbbba8]"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
+                  <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-white/90">
+                    {inspectingBook.summary}
+                  </p>
                 </div>
 
-                <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[#362a23] pt-4">
+                <div className="mt-5 flex flex-wrap items-center justify-center sm:justify-start gap-2">
                   <button
                     type="button"
                     onClick={onStartReading}
-                    className="flex items-center gap-1.5 rounded-xl bg-[#c85a28] px-4 py-2.5 text-xs font-bold text-white shadow-lg hover:bg-[#e06630] transition"
+                    className="whitespace-nowrap shrink-0 flex items-center gap-1.5 rounded-xl bg-white/22 px-3.5 py-2 text-xs text-white hover:bg-white/32 transition cursor-pointer"
                   >
-                    <BookOpen className="h-4 w-4" />
+                    <BookOpen className="h-3.5 w-3.5 shrink-0" />
                     <span>책 펼쳐 읽기</span>
                   </button>
 
@@ -893,26 +858,18 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                     <button
                       type="button"
                       onClick={onSitAndReadNearest}
-                      className="flex items-center gap-1.5 rounded-xl bg-purple-700 px-3.5 py-2.5 text-xs font-semibold text-white shadow hover:bg-purple-600 transition"
+                      className="whitespace-nowrap shrink-0 rounded-xl bg-white/14 px-3 py-2 text-xs text-white/95 hover:bg-white/24 transition cursor-pointer"
                     >
-                      <span>🪑 의자에 앉아 읽기</span>
+                      앉아서 읽기
                     </button>
                   )}
 
                   <button
                     type="button"
-                    onClick={onCloseBookDetail}
-                    className="rounded-xl bg-[#2e231d] px-3.5 py-2.5 text-xs font-medium text-[#fde68a] hover:bg-[#3d2f28] transition"
-                  >
-                    손에 든 채로 서점 걷기
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={onReturnHeldBook}
-                    className="rounded-xl bg-[#241c17] px-3 py-2.5 text-xs text-[#b8a99a] hover:bg-stone-800 hover:text-white transition"
+                    className="whitespace-nowrap shrink-0 rounded-xl bg-white/10 px-3 py-2 text-xs text-white/75 hover:bg-white/20 hover:text-white transition cursor-pointer"
                   >
-                    책장에 다시 꽂기
+                    다시 꽂기
                   </button>
                 </div>
               </div>
@@ -922,41 +879,41 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
       )}
 
       {/* ============================================================
-          MODAL 2: OPEN BOOK READING SPREAD
+          MODAL 2: OPEN BOOK READING SPREAD (Borderless Clean Spread)
          ============================================================ */}
       {isReadingModalOpen && heldBook && (
         <div className="pointer-events-auto fixed inset-x-0 bottom-16 z-40 mx-auto flex max-w-3xl flex-col px-3">
-          <div className="relative rounded-3xl bg-[#f7f1e3] p-5 text-[#292524] shadow-2xl border-4 border-[#7c4a21]">
-            <div className="mb-3 flex items-center justify-between border-b border-[#d6cbb9] pb-2">
+          <div className="relative rounded-2xl bg-[#f7f3eb]/95 p-5 text-neutral-800 shadow-2xl backdrop-blur-md">
+            <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="rounded-md bg-[#c85a28] px-2 py-0.5 text-[11px] font-bold text-white">
-                  독서 중 {isSeated ? '(착석 독서)' : '(서서 읽기)'}
+                <span className="rounded-md bg-neutral-800/12 px-2 py-0.5 text-xs text-neutral-700">
+                  독서 중
                 </span>
-                <span className="font-serif text-sm font-bold text-[#1c1917]">
+                <span className="text-base text-neutral-900">
                   『{heldBook.title}』 — {heldBook.author}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={onStopReading}
-                className="rounded-lg bg-[#292524] px-3 py-1 text-xs font-semibold text-[#f7f1e3] hover:bg-[#c85a28] transition"
+                className="rounded-lg bg-neutral-800 px-3 py-1 text-xs text-white hover:bg-neutral-700 transition cursor-pointer"
               >
                 책 덮기
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-serif">
-              <div className="sm:border-r border-[#d6cbb9] sm:pr-4">
-                <p className="whitespace-pre-line text-xs sm:text-sm leading-relaxed text-[#292524]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-neutral-800">
                   {heldBook.excerpt[0]}
                 </p>
-                <div className="mt-2 text-[10px] text-[#78716c]">— p. 42</div>
+                <div className="mt-2 text-xs text-neutral-500">— p. 42</div>
               </div>
-              <div className="sm:pl-2">
-                <p className="whitespace-pre-line text-xs sm:text-sm leading-relaxed text-[#292524]">
+              <div>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-neutral-800">
                   {heldBook.excerpt[1]}
                 </p>
-                <div className="mt-2 text-right text-[10px] text-[#78716c]">
+                <div className="mt-2 text-right text-xs text-neutral-500">
                   — p. 43
                 </div>
               </div>
@@ -966,131 +923,85 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
       )}
 
       {/* ============================================================
-          MODAL 3: TABLE INTERACTION & GUESTBOOK MODAL
+          MODAL 3: TABLE MODAL (No Borders, No Kicker, No Guestbook)
          ============================================================ */}
       {inspectingTable && (
-        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="relative max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-[#1b1411] p-6 text-[#f5efe6] shadow-2xl border border-[#d97736]/50">
+        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-neutral-950/68 p-6 text-white shadow-2xl backdrop-blur-xl">
             <button
               type="button"
               onClick={onCloseTableModal}
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/12 text-white/80 hover:bg-white/25 hover:text-white transition cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <div className="text-xs font-semibold text-[#e09f3e]">
-              테이블 및 가구 인터랙션
-            </div>
-            <h2 className="mt-1 font-serif text-xl font-bold text-[#f8f1e5]">
-              {inspectingTable.name}
-            </h2>
-            <p className="mt-2 text-xs leading-relaxed text-[#dfd5c7]">
+            <h2 className="text-xl text-white pr-10">{inspectingTable.name}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/85">
               {inspectingTable.description}
             </p>
 
-            <div className="mt-3 overflow-hidden rounded-2xl border border-[#3d2f28]">
+            <div className="mt-4 overflow-hidden rounded-xl">
               <img
                 src={inspectingTable.realPhotoUrl}
                 alt={inspectingTable.name}
-                className="h-44 w-full object-cover"
+                className="h-48 w-full object-cover"
               />
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {heldBook && !tablePlacedBooks[inspectingTable.id] && (
-                <button
-                  type="button"
-                  onClick={() => onPlaceBookOnTable(inspectingTable.id)}
-                  className="rounded-xl bg-[#c85a28] px-4 py-2 text-xs font-bold text-white hover:bg-[#e06630] transition"
-                >
-                  📕 들고 있는 『{heldBook.title}』 테이블에 내려놓기
-                </button>
-              )}
-
-              {tablePlacedBooks[inspectingTable.id] && (
-                <button
-                  type="button"
-                  onClick={() => onPickBookFromTable(inspectingTable.id)}
-                  className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-500 transition"
-                >
-                  📕 테이블 위의 『{tablePlacedBooks[inspectingTable.id]?.title}』 다시 집어들기
-                </button>
-              )}
-
-              {inspectingTable.linkedSeatId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const seat = SEAT_OBJECTS.find(
-                      (s) => s.id === inspectingTable.linkedSeatId
-                    );
-                    if (seat) {
-                      onCloseTableModal();
-                      onSitOnSeat(seat);
-                    }
-                  }}
-                  className="rounded-xl bg-purple-700 px-4 py-2 text-xs font-semibold text-white hover:bg-purple-600 transition"
-                >
-                  🪑 이 테이블 의자에 앉기
-                </button>
-              )}
-
-              {inspectingTable.id === 'table_window_desk' && (
-                <button
-                  type="button"
-                  onClick={onToggleWindowLamp}
-                  className="flex items-center gap-1.5 rounded-xl bg-[#2e231d] px-3.5 py-2 text-xs font-medium text-[#fde68a] hover:bg-[#3d2f28] transition"
-                >
-                  <Lamp className="h-4 w-4" />
-                  <span>오렌지 스탠드 조명 {windowLampOn ? '끄기' : '켜기'}</span>
-                </button>
-              )}
-            </div>
-
-            {inspectingTable.id === 'table_center_recommend' && (
-              <div className="mt-5 border-t border-[#362a23] pt-4">
-                <h3 className="font-serif text-sm font-bold text-[#fde68a]">
-                  ✍️ 독자서점 방문객 방명록 (READ MORE BOOKS)
-                </h3>
-                <form onSubmit={handleAddGuestbook} className="mt-2.5 flex gap-2">
-                  <input
-                    type="text"
-                    value={newGuestName}
-                    onChange={(e) => setNewGuestName(e.target.value)}
-                    placeholder="닉네임"
-                    className="w-24 rounded-xl bg-[#261d18] px-2.5 py-1.5 text-xs text-white border border-[#3d2f28] focus:outline-none focus:border-[#c85a28]"
-                  />
-                  <input
-                    type="text"
-                    value={newGuestMsg}
-                    onChange={(e) => setNewGuestMsg(e.target.value)}
-                    placeholder="서점 방문 소감이나 문장을 남겨보세요..."
-                    className="flex-1 rounded-xl bg-[#261d18] px-3 py-1.5 text-xs text-white border border-[#3d2f28] focus:outline-none focus:border-[#c85a28]"
-                  />
+            {(heldBook ||
+              tablePlacedBooks[inspectingTable.id] ||
+              inspectingTable.linkedSeatId ||
+              inspectingTable.id === 'table_window_desk') && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {heldBook && !tablePlacedBooks[inspectingTable.id] && (
                   <button
-                    type="submit"
-                    className="rounded-xl bg-[#c85a28] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#e06630]"
+                    type="button"
+                    onClick={() => onPlaceBookOnTable(inspectingTable.id)}
+                    className="rounded-xl bg-white/20 px-4 py-2 text-sm text-white hover:bg-white/30 transition cursor-pointer"
                   >
-                    남기기
+                    『{heldBook.title}』 내려놓기
                   </button>
-                </form>
-                <div className="mt-3 max-h-36 space-y-2 overflow-y-auto pr-1">
-                  {guestbookEntries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="rounded-xl bg-[#241c17] p-2.5 text-xs border border-[#362a23]"
-                    >
-                      <div className="flex items-center justify-between text-[11px] text-[#d4a359]">
-                        <strong>{entry.nickname}</strong>
-                        <span>
-                          📕 {entry.favBook} · {entry.date}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-[#e5ddd3]">{entry.message}</p>
-                    </div>
-                  ))}
-                </div>
+                )}
+
+                {tablePlacedBooks[inspectingTable.id] && (
+                  <button
+                    type="button"
+                    onClick={() => onPickBookFromTable(inspectingTable.id)}
+                    className="rounded-xl bg-white/20 px-4 py-2 text-sm text-white hover:bg-white/30 transition cursor-pointer"
+                  >
+                    『{tablePlacedBooks[inspectingTable.id]?.title}』 다시 집어들기
+                  </button>
+                )}
+
+                {inspectingTable.linkedSeatId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const seat = SEAT_OBJECTS.find(
+                        (s) => s.id === inspectingTable.linkedSeatId
+                      );
+                      if (seat) {
+                        onCloseTableModal();
+                        onSitOnSeat(seat);
+                      }
+                    }}
+                    className="rounded-xl bg-white/15 px-4 py-2 text-sm text-white hover:bg-white/25 transition cursor-pointer"
+                  >
+                    의자에 앉기
+                  </button>
+                )}
+
+                {inspectingTable.id === 'table_window_desk' && (
+                  <button
+                    type="button"
+                    onClick={onToggleWindowLamp}
+                    className="flex items-center gap-1.5 rounded-xl bg-white/14 px-3.5 py-2 text-sm text-white/90 hover:bg-white/24 transition cursor-pointer"
+                  >
+                    <Lamp className="h-4 w-4" />
+                    <span>스탠드 조명 {windowLampOn ? '끄기' : '켜기'}</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1098,73 +1009,67 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
       )}
 
       {/* ============================================================
-          MODAL 4: SPACE STORY & REAL PHOTO COMPARISON MODAL
+          MODAL 4: SPACE STORY MODAL (Borderless, Clean, Concise)
          ============================================================ */}
       {inspectingStory && (
-        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
-          <div className="relative max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-[#1b1411] p-6 text-[#f5efe6] shadow-2xl border border-[#d97736]/50">
+        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-neutral-950/68 p-6 text-white shadow-2xl backdrop-blur-xl">
             <button
               type="button"
               onClick={onCloseStoryModal}
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/12 text-white/80 hover:bg-white/25 hover:text-white transition cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <span className="rounded-full bg-[#c85a28]/25 px-3 py-0.5 text-xs font-semibold text-[#fde68a] border border-[#c85a28]/40">
-              {inspectingStory.category}
-            </span>
-            <h2 className="mt-2 font-serif text-xl font-bold text-[#f8f1e5]">
+            <h2 className="text-xl text-white pr-10">
               {inspectingStory.title}
             </h2>
-            <p className="text-xs text-[#d4a359]">{inspectingStory.subtitle}</p>
-
-            <div className="mt-3 overflow-hidden rounded-2xl border border-[#3d2f28]">
-              <img
-                src={inspectingStory.realPhotoUrl}
-                alt={inspectingStory.title}
-                className="h-56 w-full object-cover"
-              />
-              <div className="bg-[#241c17] px-3 py-1.5 text-[11px] text-[#cbbba8]">
-                📷 실제 독자서점(DOKJA) 현장 사진 아카이브
-              </div>
-            </div>
-
-            <p className="mt-3 text-xs leading-relaxed text-[#e5ddd3]">
+            <p className="mt-2 text-sm leading-relaxed text-white/85">
               {inspectingStory.description}
             </p>
 
-            <ul className="mt-3 space-y-1.5 rounded-2xl bg-[#241c17] p-3.5 text-xs text-[#d6c7b2] border border-[#362a23]">
-              {inspectingStory.details.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-[#c85a28]">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="mt-4 overflow-hidden rounded-xl">
+              <img
+                src={inspectingStory.realPhotoUrl}
+                alt={inspectingStory.title}
+                className="h-52 w-full object-cover"
+              />
+            </div>
+
+            {inspectingStory.details.length > 0 && (
+              <ul className="mt-4 space-y-1.5 rounded-xl bg-white/8 p-3.5 text-sm text-white/85">
+                {inspectingStory.details.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="text-white/50">·</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       )}
 
       {/* ============================================================
-          MODAL 5: REAL PHOTO ARCHIVE & SPACE STORIES GALLERY
+          MODAL 5: REAL PHOTO ARCHIVE GALLERY (Borderless Semi-Transparent)
          ============================================================ */}
       {showPhotoGallery && (
-        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-[#1b1411] p-6 text-[#f5efe6] shadow-2xl border border-[#d97736]/50">
+        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-neutral-950/68 p-6 text-white shadow-2xl backdrop-blur-xl">
             <button
               type="button"
               onClick={() => setShowPhotoGallery(false)}
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/12 text-white/80 hover:bg-white/25 hover:text-white transition cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#f8f1e5]">
-              독자서점 (DOKJA) 공간별 이야기 & 실물 사진 아카이브
+            <h2 className="text-xl sm:text-2xl text-white">
+              독자서점 공간 사진
             </h2>
-            <p className="mt-1 text-xs text-[#cbbba8]">
-              원하는 공간을 선택하면 캐릭터가 해당 장소로 직접 걸어가며 상세 이야기를 확인할 수 있습니다.
+            <p className="mt-1 text-sm text-white/75">
+              공간을 선택하면 해당 위치로 이동해 둘러볼 수 있습니다.
             </p>
 
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -1175,7 +1080,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                     setShowPhotoGallery(false);
                     onOpenStoryModal(story);
                   }}
-                  className="group cursor-pointer overflow-hidden rounded-2xl bg-[#241c17] border border-[#3d2f28] hover:border-[#c85a28] transition flex flex-col justify-between"
+                  className="group cursor-pointer overflow-hidden rounded-xl bg-white/8 hover:bg-white/15 transition flex flex-col justify-between"
                 >
                   <div>
                     <img
@@ -1183,21 +1088,16 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                       alt={story.title}
                       className="h-36 w-full object-cover group-hover:scale-105 transition duration-300"
                     />
-                    <div className="p-3">
-                      <span className="text-[10px] font-semibold text-[#e09f3e]">
-                        {story.category}
-                      </span>
-                      <h3 className="mt-0.5 font-serif text-sm font-bold text-[#f8f1e5] group-hover:text-[#fde68a]">
-                        {story.title}
-                      </h3>
-                      <p className="mt-1 line-clamp-2 text-[11px] text-[#b8a99a]">
+                    <div className="p-3.5">
+                      <h3 className="text-base text-white">{story.title}</h3>
+                      <p className="mt-1 line-clamp-2 text-xs text-white/70">
                         {story.description}
                       </p>
                     </div>
                   </div>
-                  <div className="px-3 pb-3">
-                    <span className="inline-block rounded-lg bg-[#c85a28]/20 px-2.5 py-1 text-[11px] font-medium text-[#fde68a] group-hover:bg-[#c85a28] group-hover:text-white transition">
-                      이 공간으로 이동 및 살펴보기 →
+                  <div className="px-3.5 pb-3.5">
+                    <span className="inline-block rounded-lg bg-white/14 px-2.5 py-1 text-xs text-white group-hover:bg-white/25 transition">
+                      이동하기
                     </span>
                   </div>
                 </div>
@@ -1208,88 +1108,99 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
       )}
 
       {/* ============================================================
-          MODAL 6: CONTROLS & EXPERIENCE GUIDE MODAL
+          MODAL 6: AUTOMATIC ENTRANCE WELCOME GUIDE (독자 입구 안내)
          ============================================================ */}
       {showGuideModal && (
-        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
-          <div className="relative max-w-lg w-full rounded-3xl bg-[#1b1411] p-6 text-[#f5efe6] shadow-2xl border border-[#d97736]/50">
+        <div
+          onClick={() => setShowGuideModal(false)}
+          className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-md w-full rounded-2xl bg-neutral-950/68 p-6 text-white shadow-2xl backdrop-blur-xl"
+          >
             <button
               type="button"
               onClick={() => setShowGuideModal(false)}
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/12 text-white/80 hover:bg-white/25 hover:text-white transition cursor-pointer"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
 
-            <h2 className="font-serif text-xl font-bold text-[#fde68a]">
-              독자서점 3D 인터랙티브 탐험 가이드
-            </h2>
-            <div className="mt-4 space-y-3 text-xs leading-relaxed text-[#dfd5c7]">
-              <div className="rounded-xl bg-[#241c17] p-3 border border-[#362a23]">
-                <strong className="text-[#f8f1e5]">
-                  1. 모바일 두 손가락 확대/축소 & 터치 이동
-                </strong>
-                <p className="mt-1">
-                  • 모바일에서는 <strong>두 손가락을 벌리거나 오므려(Pinch Zoom)</strong> 공간을 자유롭게 확대·축소할 수 있습니다.
-                  <br />• 바닥을 직접 터치하거나 좌측 하단 방향키로 이동할 수 있으며, 한 손가락 드래그로 시점을 둘러볼 수 있습니다.
-                </p>
+            <h2 className="text-xl text-white">독자 입구 안내</h2>
+
+            <div className="mt-4 space-y-2.5 text-sm leading-relaxed text-white/90 break-keep">
+              <div className="flex items-start gap-1.5">
+                <span className="shrink-0">·</span>
+                <span>독자는 무인서점이라 사장이 있다 없다 합니다.</span>
               </div>
-              <div className="rounded-xl bg-[#241c17] p-3 border border-[#362a23]">
-                <strong className="text-[#f8f1e5]">
-                  2. 책장 구경하기 & 책 꺼내서 들고 다니기
-                </strong>
-                <p className="mt-1">
-                  • 서가의 간판이나 빛나는 대표 도서를 터치(클릭)하면 캐릭터가 다가가 책을 꺼내 손에 듭니다.
-                </p>
+              <div className="flex items-start gap-1.5">
+                <span className="shrink-0">·</span>
+                <span>반려동물 동반 가능 · 키즈케어존입니다.</span>
               </div>
-              <div className="rounded-xl bg-[#241c17] p-3 border border-[#362a23]">
-                <strong className="text-[#f8f1e5]">
-                  3. 의자에 앉기 · 독서 타이머 & 숨은그림찾기
-                </strong>
-                <p className="mt-1">
-                  • 창가 책상이나 대형 테이블 의자에 앉아 <strong>독서 타이머 & 통합 사운드</strong>를 켜고 여유롭게 머물 수 있습니다.
-                  <br />• 서점 곳곳의 <strong>숨은그림 5가지</strong>를 모두 찾으면 <strong>서점 방문 시 스티커</strong>를 제공해 드립니다.
-                </p>
+              <div className="flex items-start gap-1.5">
+                <span className="shrink-0">·</span>
+                <span>창가에 앉아 있으면 낮과 밤이 바뀌는 풍경을 볼 수 있습니다.</span>
               </div>
+              <div className="flex items-start gap-1.5">
+                <span className="shrink-0">·</span>
+                <span>
+                  각 스팟별로 설명이 되어 있고 약간의 챌린지도 숨어 있으니, 독자에서 잘 놀다 가세요.
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              {isOutsideOnRoad && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowGuideModal(false);
+                    onEnterStoreFromRoad();
+                  }}
+                  className="whitespace-nowrap rounded-xl bg-white/22 px-4 py-2 text-sm text-white hover:bg-white/32 transition cursor-pointer"
+                >
+                  독자서점 들어가기
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowGuideModal(false)}
+                className="whitespace-nowrap rounded-xl bg-white/12 px-4 py-2 text-sm text-white/85 hover:bg-white/22 hover:text-white transition cursor-pointer"
+              >
+                닫기
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {/* ============================================================
-          MODAL 7 (FEATURE #2): READING FOCUS TIMER & BOOKSTORE ASMR LOUNGE
+          MODAL 7: READING FOCUS TIMER & SOUND (Borderless Semi-Transparent)
          ============================================================ */}
       {showTimerAsmrModal && (
         <div
           data-testid="timer-asmr-modal"
-          className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 sm:p-4 backdrop-blur-sm"
+          className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3 sm:p-4 backdrop-blur-sm"
         >
-          <div className="relative max-h-[90vh] max-w-xl w-full overflow-y-auto rounded-3xl bg-[#1b1411] p-5 sm:p-6 text-[#f5efe6] shadow-2xl border border-[#d97736]/60">
+          <div className="relative max-h-[90vh] max-w-lg w-full overflow-y-auto rounded-2xl bg-neutral-950/68 p-6 text-white shadow-2xl backdrop-blur-xl">
             <button
               type="button"
               onClick={() => setShowTimerAsmrModal(false)}
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-[#2a201b] text-[#cbbba8] hover:bg-[#c85a28] hover:text-white transition"
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/12 text-white/80 hover:bg-white/25 hover:text-white transition cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#e09f3e]">
-              <Timer className="h-4 w-4" />
-              <span>독자서점 창가 독서 라운지 · 포모도로 & 백색소음(ASMR)</span>
-            </div>
-            <h2 className="mt-1 font-serif text-xl sm:text-2xl font-bold text-[#f8f1e5]">
-              창가 책상 독서 타이머 & 서점 ASMR
-            </h2>
-            <p className="mt-1 text-xs text-[#cbbba8]">
-              실제 책을 읽거나 작업할 때 타이머와 서점 백색소음을 켜두고 독자서점 안에 오래도록 머물러 보세요. 창을 닫아도 상단 미니 타이머와 사운드는 계속 유지됩니다.
+            <h2 className="text-xl text-white">독서 타이머 & 서점 사운드</h2>
+            <p className="mt-1 text-sm text-white/75">
+              타이머와 서점 사운드를 켜두고 편하게 독서해 보세요.
             </p>
 
-            {/* 1. Pomodoro Reading Timer Card */}
-            <div className="mt-4 rounded-2xl bg-[#241c17] p-4 border border-[#3d2f28]">
+            {/* Pomodoro Reading Timer Card */}
+            <div className="mt-4 rounded-xl bg-white/8 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-[#fde68a]">
-                  ⏱️ 집중 독서 타이머 선택
-                </span>
+                <span className="text-sm text-white/90">집중 시간 선택</span>
                 <div className="flex items-center gap-1.5">
                   {([10, 25, 45] as const).map((mins) => (
                     <button
@@ -1300,10 +1211,10 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                         setTimerRemainingSec(mins * 60);
                         setTimerRunning(false);
                       }}
-                      className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      className={`rounded-lg px-3 py-1 text-xs transition cursor-pointer ${
                         timerDurationMinutes === mins
-                          ? 'bg-[#c85a28] text-white shadow'
-                          : 'bg-[#191310] text-[#cbbba8] hover:text-white'
+                          ? 'bg-white/25 text-white'
+                          : 'bg-white/8 text-white/75 hover:bg-white/16 hover:text-white'
                       }`}
                     >
                       {mins}분
@@ -1312,17 +1223,17 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl bg-[#191310]/90 px-5 py-4 border border-[#362a23]">
+              <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl bg-black/30 px-5 py-4">
                 <div className="text-center sm:text-left">
-                  <div className="font-mono text-3xl sm:text-4xl font-bold tracking-wider text-[#fde68a]">
+                  <div className="text-3xl sm:text-4xl tracking-wider text-white">
                     {formatTimer(timerRemainingSec)}
                   </div>
-                  <div className="mt-0.5 text-[11px] text-[#b8a99a]">
+                  <div className="mt-0.5 text-xs text-white/65">
                     {timerRunning
-                      ? '✨ 독자서점에서 집중 독서 중입니다...'
+                      ? '독자서점에서 독서 중입니다.'
                       : completedSessions > 0
-                      ? `오늘 완료한 독서 세션: ${completedSessions}회`
-                      : '원하는 시간을 고르고 독서를 시작해 보세요'}
+                      ? `완료한 독서 세션: ${completedSessions}회`
+                      : '시간을 선택하고 시작해 보세요.'}
                   </div>
                 </div>
 
@@ -1331,11 +1242,7 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                     type="button"
                     data-testid="timer-start-pause-btn"
                     onClick={() => setTimerRunning((r) => !r)}
-                    className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow transition ${
-                      timerRunning
-                        ? 'bg-amber-600 hover:bg-amber-500'
-                        : 'bg-[#c85a28] hover:bg-[#e06630]'
-                    }`}
+                    className="flex items-center gap-1.5 rounded-xl bg-white/22 px-4 py-2 text-sm text-white hover:bg-white/32 transition cursor-pointer"
                   >
                     {timerRunning ? (
                       <>
@@ -1355,14 +1262,13 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                       setTimerRunning(false);
                       setTimerRemainingSec(timerDurationMinutes * 60);
                     }}
-                    className="rounded-xl bg-[#2a201b] px-3 py-2.5 text-xs font-medium text-[#cbbba8] hover:text-white transition"
+                    className="rounded-xl bg-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/20 hover:text-white transition cursor-pointer"
                   >
                     초기화
                   </button>
                 </div>
               </div>
 
-              {/* Quick Seat Navigation Shortcuts */}
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -1375,9 +1281,9 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                       onSitOnSeat(winChair);
                     }
                   }}
-                  className="flex-1 rounded-xl bg-[#2e231d] px-3 py-2 text-xs font-medium text-[#fde68a] hover:bg-[#c85a28] hover:text-white transition text-center"
+                  className="whitespace-nowrap flex-1 rounded-xl bg-white/10 px-3 py-2 text-xs text-white/90 hover:bg-white/20 transition text-center cursor-pointer"
                 >
-                  🪑 입구 창가 독서 책상에 앉기
+                  창가 독서 책상에 앉기
                 </button>
                 <button
                   type="button"
@@ -1390,72 +1296,43 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                       onSitOnSeat(workChair);
                     }
                   }}
-                  className="flex-1 rounded-xl bg-[#2e231d] px-3 py-2 text-xs font-medium text-[#fde68a] hover:bg-[#c85a28] hover:text-white transition text-center"
+                  className="whitespace-nowrap flex-1 rounded-xl bg-white/10 px-3 py-2 text-xs text-white/90 hover:bg-white/20 transition text-center cursor-pointer"
                 >
-                  🪑 안쪽 대형 독서 테이블에 앉기
+                  안쪽 독서 테이블에 앉기
                 </button>
               </div>
             </div>
 
-            {/* 2. Single Unified Button for Bookstore BGM + ASMR */}
-            <div className="mt-4 rounded-2xl bg-[#241c17] p-4 border border-[#3d2f28]">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition ${
-                      bgmPlaying
-                        ? 'bg-[#c85a28] text-white shadow-md ring-2 ring-[#fde68a]/50'
-                        : 'bg-[#191310] text-[#8d7d6e] border border-[#332721]'
-                    }`}
-                  >
-                    {bgmPlaying ? (
-                      <Volume2 className="h-5 w-5" />
-                    ) : (
-                      <VolumeX className="h-5 w-5" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-[#f8f1e5]">
-                      서점 배경음악 & ASMR 통합 사운드
-                    </div>
-                    <p className="mt-0.5 text-[11px] text-[#b8a99a]">
-                      재즈 피아노·오르골 선율과 창밖 빗소리·책장 넘김·모닥불 ASMR을 버튼 하나로 동시에 켜고 끕니다.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  data-testid="unified-sound-toggle-btn"
-                  onClick={onToggleBgm}
-                  className={`shrink-0 flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-bold transition shadow-lg ${
-                    bgmPlaying
-                      ? 'bg-[#c85a28] text-white ring-1 ring-[#fde68a]/60 hover:bg-[#b04c1f]'
-                      : 'bg-[#191310] text-[#fde68a] border border-[#d4af37]/40 hover:bg-[#c85a28] hover:text-white'
-                  }`}
-                >
-                  {bgmPlaying ? (
-                    <>
-                      <Volume2 className="h-4 w-4" />
-                      <span>사운드 켜짐 (한 번에 끄기)</span>
-                    </>
-                  ) : (
-                    <>
-                      <VolumeX className="h-4 w-4" />
-                      <span>사운드 꺼짐 (한 번에 켜기)</span>
-                    </>
-                  )}
-                </button>
+            {/* Unified Bookstore Sound */}
+            <div className="mt-3 rounded-xl bg-white/8 p-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm text-white">서점 배경음악 & ASMR</div>
+                <p className="mt-0.5 text-xs text-white/70">
+                  재즈 피아노 선율과 백색소음을 함께 켜고 끕니다.
+                </p>
               </div>
-            </div>
 
-            <div className="mt-4 flex justify-end">
               <button
                 type="button"
-                onClick={() => setShowTimerAsmrModal(false)}
-                className="rounded-xl bg-[#c85a28] px-4 py-2 text-xs font-bold text-white shadow hover:bg-[#e06630] transition"
+                data-testid="unified-sound-toggle-btn"
+                onClick={onToggleBgm}
+                className={`shrink-0 flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm transition cursor-pointer ${
+                  bgmPlaying
+                    ? 'bg-white/25 text-white hover:bg-white/35'
+                    : 'bg-white/12 text-white/85 hover:bg-white/22 hover:text-white'
+                }`}
               >
-                창 닫고 서점 풍경 감상하며 머물기
+                {bgmPlaying ? (
+                  <>
+                    <Volume2 className="h-4 w-4" />
+                    <span>사운드 켜짐</span>
+                  </>
+                ) : (
+                  <>
+                    <VolumeX className="h-4 w-4" />
+                    <span>사운드 꺼짐</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -1463,64 +1340,36 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
       )}
 
       {/* ============================================================
-          MODAL 8 (FEATURE #3): '숨은그림찾기' VISUAL POSTER STAMP TOUR
-          (Inspired by '무무를 찾아라!' — Find & Tap 5 Hidden Objects in 3D!)
+          MODAL 8: HIDDEN OBJECT STAMP TOUR (Borderless Semi-Transparent)
          ============================================================ */}
       {showStampTourModal && (
         <div
           data-testid="stamp-tour-modal"
-          className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 sm:p-4 backdrop-blur-sm"
+          className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3 sm:p-4 backdrop-blur-sm"
         >
-          <div className="relative max-h-[92vh] max-w-2xl w-full overflow-y-auto rounded-3xl bg-[#1b1411] p-4 sm:p-5 text-[#f5efe6] shadow-2xl border-2 border-[#d97736]/70">
-            {/* Poster Banner Header ('무무를 찾아라!' style) */}
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f8f1e5] px-4 py-3 text-[#191310] shadow-inner border-2 border-[#191310]">
-              <div className="flex items-center gap-3">
-                {/* Circular Illustrated Mumu Badge */}
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e5dccb] border-2 border-[#191310] shadow">
-                  <svg viewBox="0 0 64 64" className="h-10 w-10">
-                    {/* Floppy Ears */}
-                    <ellipse cx="14" cy="34" rx="7" ry="13" fill="#09090b" />
-                    <ellipse cx="50" cy="34" rx="7" ry="13" fill="#09090b" />
-                    {/* Fluffy Black Head */}
-                    <circle cx="32" cy="30" r="17" fill="#1c1917" />
-                    {/* Red Collar & Gold Bell */}
-                    <rect x="20" y="43" width="24" height="5" rx="2.5" fill="#dc2626" />
-                    <circle cx="32" cy="49" r="3.5" fill="#facc15" stroke="#191310" strokeWidth="1" />
-                    {/* Eyes */}
-                    <circle cx="25" cy="27" r="3" fill="#ffffff" />
-                    <circle cx="39" cy="27" r="3" fill="#ffffff" />
-                    <circle cx="25" cy="27" r="1.7" fill="#09090b" />
-                    <circle cx="39" cy="27" r="1.7" fill="#09090b" />
-                    {/* Nose & Pink Tongue */}
-                    <ellipse cx="32" cy="32" rx="3.2" ry="2.4" fill="#09090b" />
-                    <path d="M29 36 Q32 43 35 36 Z" fill="#fb7185" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="font-serif text-lg sm:text-xl font-black tracking-tight text-[#191310]">
-                    독자 숨은그림을 찾아라!
-                  </h2>
-                  <p className="text-[11px] sm:text-xs font-bold text-[#5c4028]">
-                    책장·액자·테이블 속에 숨은 5가지를 직접 찾아 터치하세요!
-                  </p>
-                </div>
+          <div className="relative max-h-[92vh] max-w-2xl w-full overflow-y-auto rounded-2xl bg-neutral-950/68 p-5 sm:p-6 text-white shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl text-white">독자 숨은그림을 찾아라</h2>
+                <p className="mt-0.5 text-xs sm:text-sm text-white/75">
+                  서점 속에 숨은 5가지를 직접 찾아 클릭해 보세요.
+                </p>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-[#c85a28] px-3 py-1 text-xs font-extrabold text-white shadow">
+                <span className="rounded-lg bg-white/16 px-3 py-1 text-xs text-white">
                   {collectedStampIds.length} / {STAMP_MISSIONS.length}
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowStampTourModal(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#191310] text-[#f8f1e5] hover:bg-[#c85a28] transition"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white/12 text-white/80 hover:bg-white/25 hover:text-white transition cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            {/* 3x2 Visual Hidden-Object Target Grid (5 Illustrated Targets + 1 Bookmark Reward) */}
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
               {STAMP_MISSIONS.map((mission) => {
                 const isCollected = collectedStampIds.includes(mission.id);
@@ -1528,136 +1377,101 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                   <div
                     key={mission.id}
                     onClick={() => setShowStampTourModal(false)}
-                    className={`group cursor-pointer relative overflow-hidden rounded-2xl border-2 text-left transition-all ${
+                    className={`group cursor-pointer relative overflow-hidden rounded-xl text-left transition-all ${
                       isCollected
-                        ? 'bg-[#261d17] border-amber-400 shadow-lg ring-1 ring-amber-400/40'
-                        : 'bg-[#221914] border-[#3d2e26] hover:border-[#e09f3e]'
+                        ? 'bg-white/18 shadow-md'
+                        : 'bg-white/8 hover:bg-white/14'
                     }`}
                   >
-                    {/* Custom Visual Illustration of the Exact Hidden Object */}
-                    <div className="relative flex h-32 sm:h-36 w-full items-center justify-center overflow-hidden bg-gradient-to-b from-[#2c211b] to-[#17110e] p-3">
-                      {/* Hint Zone Pill on Top-Left */}
-                      <span className="absolute left-2 top-2 z-10 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-[#fde68a]">
-                        힌트 · {mission.zone}
+                    <div className="relative flex h-32 sm:h-36 w-full items-center justify-center overflow-hidden bg-black/25 p-3">
+                      <span className="absolute left-2 top-2 z-10 rounded-md bg-black/50 px-2 py-0.5 text-[11px] text-white/85">
+                        {mission.zone}
                       </span>
 
-                      {/* Target #1: Book with Gold Star Bookmark */}
                       {mission.id === 'hidden_book_dokja' && (
                         <svg viewBox="0 0 100 100" className="h-24 w-24 drop-shadow-lg">
-                          {/* Surrounding shelf books silhouette */}
                           <rect x="14" y="28" width="14" height="58" rx="2" fill="#3b281e" opacity="0.7" />
                           <rect x="72" y="25" width="14" height="61" rx="2" fill="#3b281e" opacity="0.7" />
-                          {/* Target Terracotta Book */}
-                          <rect x="31" y="24" width="38" height="62" rx="3" fill="#c85a28" stroke="#fde68a" strokeWidth="2" />
+                          <rect x="31" y="24" width="38" height="62" rx="3" fill="#c85a28" />
                           <rect x="31" y="62" width="38" height="10" fill="#fde68a" />
-                          {/* Red Bookmark Ribbon & Gold Star sticking out of top */}
                           <rect x="47" y="12" width="6" height="15" fill="#dc2626" />
                           <polygon
                             points="50,2 53,9 61,9 55,14 57,21 50,17 43,21 45,14 39,9 47,9"
                             fill="#facc15"
-                            stroke="#ffffff"
-                            strokeWidth="1"
                           />
                         </svg>
                       )}
 
-                      {/* Target #2: Red-Roof House Painting Frame */}
                       {mission.id === 'hidden_house_frame' && (
                         <svg viewBox="0 0 100 100" className="h-24 w-24 drop-shadow-lg">
-                          {/* Wooden Frame */}
-                          <rect x="16" y="14" width="68" height="68" rx="4" fill="#a67c52" stroke="#fde68a" strokeWidth="2" />
-                          {/* Blue Sky Canvas */}
+                          <rect x="16" y="14" width="68" height="68" rx="4" fill="#a67c52" />
                           <rect x="24" y="22" width="52" height="52" fill="#38bdf8" />
-                          {/* Golden Sun */}
                           <circle cx="35" cy="33" r="6" fill="#facc15" />
-                          {/* Green Hill */}
                           <path d="M24 56 Q50 46 76 56 L76 74 L24 74 Z" fill="#22c55e" />
-                          {/* White House & Red Roof */}
                           <rect x="41" y="45" width="20" height="16" fill="#ffffff" />
                           <polygon points="38,45 51,32 64,45" fill="#dc2626" />
                           <rect x="48" y="52" width="6" height="9" fill="#78350f" />
                         </svg>
                       )}
 
-                      {/* Target #3: Blue Butterfly Specimen Frame */}
                       {mission.id === 'hidden_butterfly_frame' && (
                         <svg viewBox="0 0 100 100" className="h-24 w-24 drop-shadow-lg">
-                          {/* Dark Frame & Cream Matte */}
-                          <rect x="18" y="14" width="64" height="68" rx="4" fill="#27272a" stroke="#fde68a" strokeWidth="2" />
+                          <rect x="18" y="14" width="64" height="68" rx="4" fill="#27272a" />
                           <rect x="25" y="21" width="50" height="54" fill="#fef3c7" />
-                          {/* Blue Butterfly Wings */}
                           <ellipse cx="40" cy="43" rx="12" ry="10" transform="rotate(-20 40 43)" fill="#0ea5e9" />
                           <ellipse cx="60" cy="43" rx="12" ry="10" transform="rotate(20 60 43)" fill="#0ea5e9" />
                           <ellipse cx="42" cy="55" rx="8" ry="7" fill="#38bdf8" />
                           <ellipse cx="58" cy="55" rx="8" ry="7" fill="#38bdf8" />
-                          {/* Butterfly Body */}
                           <rect x="48.5" y="35" width="3" height="24" rx="1.5" fill="#18181b" />
                         </svg>
                       )}
 
-                      {/* Target #4: White Duck with Yellow Sun-Hat */}
                       {mission.id === 'hidden_hat_duck' && (
                         <svg viewBox="0 0 100 100" className="h-24 w-24 drop-shadow-lg">
-                          {/* Plump White Duck Body & Head */}
                           <ellipse cx="50" cy="66" rx="22" ry="16" fill="#ffffff" />
                           <circle cx="52" cy="44" r="14" fill="#ffffff" />
-                          {/* Orange Beak & Eye */}
                           <polygon points="64,41 78,45 64,49" fill="#ea580c" />
                           <circle cx="56" cy="41" r="2.2" fill="#18181b" />
-                          {/* Bright Yellow Hat with Red Band */}
                           <ellipse cx="51" cy="31" rx="19" ry="4" fill="#facc15" />
                           <rect x="40" y="19" width="22" height="12" rx="4" fill="#facc15" />
                           <rect x="40" y="27" width="22" height="3.5" fill="#dc2626" />
                         </svg>
                       )}
 
-                      {/* Target #5: Cute Black Puppy 'Mumu' */}
                       {mission.id === 'hidden_mumu_dog' && (
                         <svg viewBox="0 0 100 100" className="h-24 w-24 drop-shadow-lg">
-                          {/* Floppy Black Ears */}
                           <ellipse cx="26" cy="50" rx="9" ry="18" fill="#09090b" />
                           <ellipse cx="74" cy="50" rx="9" ry="18" fill="#09090b" />
-                          {/* Fluffy Black Head */}
-                          <circle cx="50" cy="46" r="23" fill="#1c1917" stroke="#fde68a" strokeWidth="1.5" />
-                          {/* Red Collar & Gold Bell */}
+                          <circle cx="50" cy="46" r="23" fill="#1c1917" />
                           <rect x="33" y="64" width="34" height="7" rx="3.5" fill="#dc2626" />
                           <circle cx="50" cy="72" r="5" fill="#facc15" />
-                          {/* Shiny Eyes */}
                           <circle cx="41" cy="42" r="4" fill="#ffffff" />
                           <circle cx="59" cy="42" r="4" fill="#ffffff" />
                           <circle cx="41" cy="42" r="2.2" fill="#09090b" />
                           <circle cx="59" cy="42" r="2.2" fill="#09090b" />
-                          {/* Nose & Cute Pink Tongue */}
                           <ellipse cx="50" cy="49" rx="4.5" ry="3.2" fill="#09090b" />
                           <path d="M46 54 Q50 63 54 54 Z" fill="#fb7185" />
                         </svg>
                       )}
 
-                      {/* Stamp Seal Overlay when Found */}
                       {isCollected && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/25">
-                          <div className="-rotate-12 flex h-16 w-16 flex-col items-center justify-center rounded-full border-2 border-[#fde68a] bg-[#c85a28]/95 text-white shadow-xl ring-4 ring-[#c85a28]/30">
-                            <span className="text-xs font-black tracking-tight text-[#fde68a]">
-                              찾았다!
-                            </span>
-                            <span className="text-[10px] font-extrabold text-white">
-                              DOKJA ✓
-                            </span>
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+                          <div className="-rotate-12 flex h-14 w-14 flex-col items-center justify-center rounded-full bg-white/90 text-neutral-900 shadow-lg">
+                            <span className="text-xs">발견 완료</span>
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Minimal 1-Line Caption */}
-                    <div className="flex items-center justify-between px-2.5 py-2 bg-[#191310]">
-                      <span className="truncate font-serif text-xs font-bold text-[#f8f1e5]">
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <span className="truncate text-xs text-white/95">
                         {mission.title}
                       </span>
                       {isCollected ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-white" />
                       ) : (
-                        <span className="shrink-0 text-[10px] font-semibold text-[#fde68a]">
-                          🔍 미발견
+                        <span className="shrink-0 text-[11px] text-white/60">
+                          미발견
                         </span>
                       )}
                     </div>
@@ -1665,56 +1479,39 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                 );
               })}
 
-              {/* 6th Card: Bookstore Visit Sticker Reward Card */}
-              <div
-                className={`relative flex flex-col justify-between overflow-hidden rounded-2xl border-2 p-3 transition ${
-                  collectedStampIds.length >= STAMP_MISSIONS.length
-                    ? 'bg-gradient-to-br from-[#472916] via-[#2f1b0e] to-[#1b110b] border-[#d4af37] shadow-xl'
-                    : 'bg-[#18120f] border-dashed border-[#44352c]'
-                }`}
-              >
+              {/* 6th Card: Sticker Reward Card */}
+              <div className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-white/8 p-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-[#d4af37]/20 px-2 py-0.5 text-[10px] font-bold text-[#fde68a]">
-                    REWARD · {collectedStampIds.length}/{STAMP_MISSIONS.length}
+                  <span className="rounded-md bg-white/14 px-2 py-0.5 text-[11px] text-white/90">
+                    {collectedStampIds.length}/{STAMP_MISSIONS.length}
                   </span>
-                  <Sparkles className="h-4 w-4 text-amber-400" />
+                  <Sparkles className="h-4 w-4 text-white/80" />
                 </div>
 
-                {/* Visual Die-Cut Sticker Pack Illustration */}
-                <div className="my-2 flex items-center justify-center gap-1.5">
+                <div className="my-2 flex items-center justify-center">
                   <div
-                    className={`flex h-16 w-16 flex-col items-center justify-center rounded-full border-4 shadow-md transition ${
+                    className={`flex h-16 w-16 flex-col items-center justify-center rounded-full shadow-md transition ${
                       collectedStampIds.length >= STAMP_MISSIONS.length
-                        ? 'bg-[#c85a28] border-white text-white -rotate-6'
-                        : 'bg-[#2a201b] border-[#4b3b32] text-[#786b5e] opacity-65'
+                        ? 'bg-white text-neutral-900 -rotate-6'
+                        : 'bg-white/10 text-white/60'
                     }`}
                   >
-                    <span className="text-lg leading-none">🦆</span>
-                    <span className="mt-0.5 font-serif text-[9px] font-black tracking-tight">
-                      독자서점
-                    </span>
-                    <span className="text-[8px] font-bold text-[#fde68a]">
-                      STICKER
-                    </span>
+                    <span className="text-xs">독자서점</span>
+                    <span className="text-[10px]">스티커</span>
                   </div>
                 </div>
 
                 {collectedStampIds.length >= STAMP_MISSIONS.length ? (
-                  <div className="rounded-xl bg-[#d4af37]/20 px-2 py-1.5 text-center border border-[#d4af37]/50">
-                    <div className="text-[11px] font-extrabold text-[#fde68a]">
-                      🎁 서점 방문 시 스티커 제공!
-                    </div>
-                    <div className="text-[9px] text-[#e5d5c3]">
-                      방문 시 이 화면을 보여주세요
+                  <div className="rounded-lg bg-white/16 px-2 py-1.5 text-center">
+                    <div className="text-xs text-white">
+                      방문 시 스티커 제공
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center text-[11px] font-semibold leading-snug text-[#cbbba8]">
-                    🔒 5개 모두 찾으면
+                  <div className="text-center text-xs leading-snug text-white/75">
+                    5개 모두 찾으면
                     <br />
-                    <span className="text-[#fde68a] font-bold">
-                      서점 방문 시 스티커 제공
-                    </span>
+                    방문 시 스티커 제공
                   </div>
                 )}
               </div>
@@ -1724,13 +1521,10 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
               <div className="mt-3 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => {
-                    setHonorarySigned(false);
-                    onResetStamps();
-                  }}
-                  className="text-[11px] text-[#9c8c7c] underline hover:text-white"
+                  onClick={onResetStamps}
+                  className="text-xs text-white/60 underline hover:text-white cursor-pointer"
                 >
-                  숨은그림 기록 초기화
+                  기록 초기화
                 </button>
               </div>
             )}

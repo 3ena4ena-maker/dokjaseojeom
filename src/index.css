@@ -1,12 +1,34 @@
 @import "tailwindcss";
 
-@layer base {
-  body {
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  }
+@font-face {
+  font-family: 'KyoboHandwriting2020A';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2112@1.0/KyoboHandwriting2020A.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 
-  .font-serif {
-    font-family: 'Gowun Batang', Georgia, serif;
+@layer base {
+  html,
+  body,
+  button,
+  input,
+  textarea,
+  select,
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  div,
+  span,
+  li,
+  .font-sans,
+  .font-serif,
+  .font-mono {
+    font-family: 'KyoboHandwriting2020A', -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
+    word-break: keep-all;
+    overflow-wrap: break-word;
   }
 }
 
