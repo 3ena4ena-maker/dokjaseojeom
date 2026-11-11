@@ -345,7 +345,7 @@ export function App() {
       }
 
       const dist = Math.hypot(targetX - startX, targetZ - startZ);
-      if (dist < 0.35) {
+      if (dist < 0.08) {
         navPathRef.current = [];
         pendingArrivalRef.current = null;
         handleClearNavVisuals();
@@ -394,7 +394,7 @@ export function App() {
     setInspectingTable(null);
     setInspectingStory(null);
     showToast('🚪 독자서점 안으로 들어갑니다.');
-    walkToAndExecute(0.15, 4.95, () => {
+    walkToAndExecute(0.15, 5.65, () => {
       rotationYRef.current = Math.PI;
       cameraYawRef.current = 0;
       cameraPitchRef.current = 0.02;
@@ -410,13 +410,20 @@ export function App() {
       handleEnterStoreFromRoad();
       return;
     }
-    rotationYRef.current = Math.PI;
-    cameraYawRef.current = 0;
-    cameraPitchRef.current = 0.02;
-    cameraDistanceRef.current = 3.1;
-    setCameraDistance(3.1);
-    showToast('👁️ 내부 전체 시점으로 정렬했습니다.');
-  }, [handleEnterStoreFromRoad, showToast]);
+    setBrowsingShelf(null);
+    setInspectingBook(null);
+    setInspectingTable(null);
+    setInspectingStory(null);
+    walkToAndExecute(0.15, 5.65, () => {
+      rotationYRef.current = Math.PI;
+      cameraYawRef.current = 0;
+      cameraPitchRef.current = 0.02;
+      cameraDistanceRef.current = 3.1;
+      setCameraDistance(3.1);
+      setActionState('IDLE');
+      showToast('👁️ 내부 한눈에 보기 시점으로 정렬했습니다.');
+    });
+  }, [handleEnterStoreFromRoad, walkToAndExecute, showToast]);
 
   // Floor Click (Roadview-style click movement)
   const handleFloorClick = useCallback(
@@ -676,10 +683,10 @@ export function App() {
       setIsSeated(false);
       setActiveSeat(null);
     }
-    // Position First-Person VR viewpoint right in front of the workspace table so the owner's face & overhead bubble are clear
-    positionRef.current = [-2.45, 0, -1.85];
-    setCharacterPos([-2.45, 0, -1.85]);
-    rotateGazeInPlaceToward(-1.7, -3.1, 1.18);
+    // Position First-Person VR viewpoint on the walkable floor right across the reading table from the owner
+    positionRef.current = [0.85, 0, -3.55];
+    setCharacterPos([0.85, 0, -3.55]);
+    rotateGazeInPlaceToward(-1.6, -3.6, 1.25);
     if (!isOwnerTalkOpen) {
       setSelectedOwnerQuestionIdx(null);
     }
@@ -839,7 +846,7 @@ export function App() {
       {/* 3D Interactive Bookstore Scene */}
       <Canvas
         shadows
-        camera={{ position: [0.15, 1.72, 11.8], fov: 67, near: 0.08, far: 55 }}
+        camera={{ position: [0.15, 1.5, 10.35], fov: 68, near: 0.08, far: 55 }}
       >
         <color attach="background" args={['#181310']} />
         <fog attach="fog" args={['#1d1612', 14, 30]} />

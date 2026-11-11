@@ -9,7 +9,7 @@ import {
 } from '../types';
 
 // Starts on the road/sidewalk outside the '독자' red-brick entrance, facing the open double doors (-Z)
-export const CHARACTER_START_POSITION: [number, number, number] = [0.15, 0, 8.85];
+export const CHARACTER_START_POSITION: [number, number, number] = [0.15, 0, 10.35];
 export const CHARACTER_START_ROTATION_Y = Math.PI; // Facing North (-Z) into the store
 
 export const GENRE_SHELVES: GenreShelfData[] = [
@@ -22,7 +22,7 @@ export const GENRE_SHELVES: GenreShelfData[] = [
     locationLabel: '좌측 전면 추천 서가',
     signPosition: [-4.12, 1.98, 3.0],
     signRotationY: Math.PI / 2,
-    interactionPoint: [-3.05, 0, 2.85],
+    interactionPoint: [-2.45, 0, 2.85],
     interactionFacingY: -Math.PI / 2,
     triggerRadius: 2.2,
     accentColor: '#d97736',
@@ -38,9 +38,9 @@ export const GENRE_SHELVES: GenreShelfData[] = [
     locationLabel: '메인 책장 왼쪽 1열',
     signPosition: [3.95, 2.38, 1.01],
     signRotationY: -Math.PI / 2,
-    interactionPoint: [2.85, 0, 1.05],
+    interactionPoint: [2.35, 0, 1.15],
     interactionFacingY: Math.PI / 2,
-    triggerRadius: 1.75,
+    triggerRadius: 1.85,
     accentColor: '#eab308',
     realPhotoUrl: '/photos/main_bookshelf_front.jpg',
   },
@@ -53,9 +53,9 @@ export const GENRE_SHELVES: GenreShelfData[] = [
     locationLabel: '메인 책장 왼쪽 2열',
     signPosition: [3.95, 2.38, 1.97],
     signRotationY: -Math.PI / 2,
-    interactionPoint: [2.85, 0, 1.97],
+    interactionPoint: [2.35, 0, 1.97],
     interactionFacingY: Math.PI / 2,
-    triggerRadius: 1.75,
+    triggerRadius: 1.85,
     accentColor: '#c85a28',
     realPhotoUrl: '/photos/main_bookshelf_front.jpg',
   },
@@ -68,9 +68,9 @@ export const GENRE_SHELVES: GenreShelfData[] = [
     locationLabel: '메인 책장 중앙 3열',
     signPosition: [3.95, 2.38, 2.92],
     signRotationY: -Math.PI / 2,
-    interactionPoint: [2.85, 0, 2.92],
+    interactionPoint: [2.35, 0, 2.92],
     interactionFacingY: Math.PI / 2,
-    triggerRadius: 1.75,
+    triggerRadius: 1.85,
     accentColor: '#10b981',
     realPhotoUrl: '/photos/main_bookshelf_front.jpg',
   },
@@ -83,9 +83,9 @@ export const GENRE_SHELVES: GenreShelfData[] = [
     locationLabel: '메인 책장 왼쪽 4열',
     signPosition: [3.95, 2.38, 3.88],
     signRotationY: -Math.PI / 2,
-    interactionPoint: [3.0, 0, 3.88],
+    interactionPoint: [2.35, 0, 3.88],
     interactionFacingY: Math.PI / 2,
-    triggerRadius: 1.75,
+    triggerRadius: 1.85,
     accentColor: '#6366f1',
     realPhotoUrl: '/photos/main_bookshelf_front.jpg',
   },
@@ -98,9 +98,9 @@ export const GENRE_SHELVES: GenreShelfData[] = [
     locationLabel: '메인 책장 오른쪽 끝 5열',
     signPosition: [3.95, 2.38, 4.87],
     signRotationY: -Math.PI / 2,
-    interactionPoint: [3.0, 0, 4.85],
+    interactionPoint: [2.35, 0, 4.75],
     interactionFacingY: Math.PI / 2,
-    triggerRadius: 1.75,
+    triggerRadius: 1.85,
     accentColor: '#ec4899',
     realPhotoUrl: '/photos/entrance_interior.jpg',
   },
@@ -125,7 +125,7 @@ export const REPRESENTATIVE_BOOKS: BookItem[] = [
     shelfPosition: [-4.21, 1.21, 1.52],
     shelfRotation: [0, Math.PI / 2, 0],
     displayType: 'face-out',
-    interactionPoint: [-3.05, 0, 2.65],
+    interactionPoint: [-2.65, 0, 1.65],
     interactionFacingY: -Math.PI / 2,
     summary:
       '도쿄의 고요한 거리와 일상의 풍경, 빛이 머무는 찰나의 순간들을 담담한 시선으로 포착한 박근태 작가의 사진집입니다.\n오랜 시간 마주해 온 도시의 결을 진솔한 사진 아카이브로 한 권에 담아냈습니다.',
@@ -155,7 +155,7 @@ export const REPRESENTATIVE_BOOKS: BookItem[] = [
     shelfPosition: [4.06, 1.27, 1.01],
     shelfRotation: [0, -Math.PI / 2, 0],
     displayType: 'face-out',
-    interactionPoint: [2.85, 0, 1.05],
+    interactionPoint: [2.55, 0, 1.15],
     interactionFacingY: Math.PI / 2,
     summary:
       '스튜디오 지브리의 수채화 배경 미술과 캐릭터 스케치 과정을 생생하게 담은 공식 아트북입니다.\n신비로운 온천장과 바다 위를 달리는 기차의 색채 설계를 한눈에 감상할 수 있습니다.',
@@ -185,7 +185,7 @@ export const REPRESENTATIVE_BOOKS: BookItem[] = [
     shelfPosition: [4.06, 1.27, 1.97],
     shelfRotation: [0, -Math.PI / 2, 0],
     displayType: 'face-out',
-    interactionPoint: [2.85, 0, 1.97],
+    interactionPoint: [2.55, 0, 1.97],
     interactionFacingY: Math.PI / 2,
     summary:
       '1980년 5월의 광주와 남겨진 사람들의 시간을 시적이고 강렬한 문장으로 그려낸 장편소설입니다.\n상처 속에서도 끝내 꺼지지 않는 인간의 존엄과 기억의 빛을 조용히 응시합니다.',
@@ -215,7 +215,7 @@ export const REPRESENTATIVE_BOOKS: BookItem[] = [
     shelfPosition: [4.06, 1.27, 2.92],
     shelfRotation: [0, -Math.PI / 2, 0],
     displayType: 'face-out',
-    interactionPoint: [2.85, 0, 2.92],
+    interactionPoint: [2.55, 0, 2.92],
     interactionFacingY: Math.PI / 2,
     summary:
       '일상의 작은 관찰에서 출발해 사람의 마음을 움직이는 실전 마케팅 감각을 다룬 책입니다.\n거창한 이론 대신 현장에서 부딪히며 길어 올린 단단한 일의 태도와 시선을 전합니다.',
@@ -245,7 +245,7 @@ export const REPRESENTATIVE_BOOKS: BookItem[] = [
     shelfPosition: [4.06, 1.27, 3.88],
     shelfRotation: [0, -Math.PI / 2, 0],
     displayType: 'face-out',
-    interactionPoint: [3.0, 0, 3.88],
+    interactionPoint: [2.55, 0, 3.88],
     interactionFacingY: Math.PI / 2,
     summary:
       '흔들리는 삶의 한가운데서 나다운 삶을 긍정하는 니체의 철학을 쉽게 풀어낸 인문서입니다.\n운명을 사랑하라는 아모르 파티의 지혜로 오늘을 단단하게 살아갈 힘을 건넵니다.',
@@ -275,7 +275,7 @@ export const REPRESENTATIVE_BOOKS: BookItem[] = [
     shelfPosition: [4.06, 1.27, 4.87],
     shelfRotation: [0, -Math.PI / 2, 0],
     displayType: 'face-out',
-    interactionPoint: [3.0, 0, 4.85],
+    interactionPoint: [2.55, 0, 4.75],
     interactionFacingY: Math.PI / 2,
     summary:
       '인상주의 화가들이 사랑한 파리의 거리와 고풍스러운 건축 풍경을 산책하듯 담아낸 책입니다.\n명화 한 점과 골목의 빛을 따라가며 예술과 건축, 여행이 만나는 순간을 전합니다.',
@@ -295,9 +295,9 @@ export const SEAT_OBJECTS: SeatObjectData[] = [
     name: '창가 독서 의자',
     type: 'chair',
     description: '창가 스탠드 조명 아래서 조용히 책을 읽을 수 있는 자리입니다.',
-    seatPosition: [-3.55, 0, 5.18],
+    seatPosition: [-3.55, 0, 5.12],
     seatFacingY: 0, // Facing +Z toward the window desk
-    approachPoint: [-3.2, 0, 4.45],
+    approachPoint: [-3.1, 0, 4.45],
     triggerRadius: 1.5,
   },
   {
@@ -307,7 +307,7 @@ export const SEAT_OBJECTS: SeatObjectData[] = [
     description: '서가 앞에서 책을 꺼내 가볍게 앉아 펼쳐보기 좋은 스툴입니다.',
     seatPosition: [3.28, 0, 4.85],
     seatFacingY: -Math.PI / 2, // Facing -X into the room
-    approachPoint: [2.65, 0, 4.75],
+    approachPoint: [2.55, 0, 4.75],
     triggerRadius: 1.4,
   },
   {
@@ -331,7 +331,7 @@ export const TABLE_OBJECTS: TableObjectData[] = [
       '책방지기 추천 도서와 엽서, 독자서점 사용설명이 적혀있는 테이블입니다.',
     position: [2.65, 0, -0.05], // Flush against the right wall wood pillar (X = 1.45..3.85)
     bookPlacePosition: [2.05, 0.84, 0.22],
-    approachPoint: [2.25, 0, 0.95],
+    approachPoint: [2.15, 0, 1.15],
     approachFacingY: Math.PI, // Facing -Z toward the table
     triggerRadius: 1.85,
     realPhotoUrl: '/photos/center_table.jpg',
@@ -342,7 +342,7 @@ export const TABLE_OBJECTS: TableObjectData[] = [
     description: '창가 조명 아래서 조용히 독서하기 좋은 1인 책상입니다.',
     position: [-3.58, 0, 5.95],
     bookPlacePosition: [-3.35, 0.78, 5.78],
-    approachPoint: [-3.2, 0, 4.55],
+    approachPoint: [-3.1, 0, 4.45],
     approachFacingY: 0,
     triggerRadius: 1.75,
     linkedSeatId: 'seat_window_chair',
@@ -355,7 +355,7 @@ export const TABLE_OBJECTS: TableObjectData[] = [
       '책방지기의 작업공간이기도 하지만, 손님들이 앉아서 책을 읽어도 되는 공간입니다. 편하게 앉아서 책을 보세요.',
     position: [-0.85, 0, -3.55],
     bookPlacePosition: [-0.35, 0.84, -3.2],
-    approachPoint: [0.85, 0, -3.35],
+    approachPoint: [0.95, 0, -3.35],
     approachFacingY: -Math.PI / 2,
     triggerRadius: 2.0,
     linkedSeatId: 'seat_workshop_chair',
@@ -375,8 +375,8 @@ export const SPACE_STORIES: SpaceStoryData[] = [
       '은은한 웜화이트 전구 트리',
     ],
     position: [-3.65, 0.85, 0.65],
-    approachPoint: [-2.6, 0, 0.85],
-    approachFacingY: -Math.PI * 0.65,
+    approachPoint: [-2.45, 0, 1.45],
+    approachFacingY: -Math.PI * 0.72,
     triggerRadius: 1.65,
     realPhotoUrl: '/photos/duck_and_divider.jpg',
   },
@@ -391,7 +391,7 @@ export const SPACE_STORIES: SpaceStoryData[] = [
       '음반 CD와 투명 스피커, 레고 컬렉션',
     ],
     position: [-2.95, 1.4, -0.05],
-    approachPoint: [-2.2, 0, 0.65],
+    approachPoint: [-2.15, 0, 1.35],
     approachFacingY: Math.PI,
     triggerRadius: 1.75,
     realPhotoUrl: '/photos/duck_and_divider.jpg',
@@ -407,8 +407,8 @@ export const SPACE_STORIES: SpaceStoryData[] = [
       '붉은 페르시안 카펫 라운지',
     ],
     position: [0.3, 1.5, 3.1],
-    approachPoint: [0.3, 0, 3.1],
-    approachFacingY: 0,
+    approachPoint: [0.25, 0, 4.35],
+    approachFacingY: Math.PI,
     triggerRadius: 1.5,
     realPhotoUrl: '/photos/overview_chandelier.jpg',
   },
@@ -424,7 +424,7 @@ export const SPACE_STORIES: SpaceStoryData[] = [
       '책방지기가 사진작가로 활동하며 사용한 카메라 컬렉션',
     ],
     position: [4.15, 1.35, -5.38],
-    approachPoint: [2.55, 0, -5.15],
+    approachPoint: [2.25, 0, -4.85],
     approachFacingY: Math.PI / 2,
     triggerRadius: 1.95,
     realPhotoUrl: '/photos/camera_leather_shelf.jpg',
@@ -440,7 +440,7 @@ export const SPACE_STORIES: SpaceStoryData[] = [
       '가죽 작업대와 이동식 미싱·피할기',
     ],
     position: [-2.85, 1.4, -2.85],
-    approachPoint: [-0.65, 0, -2.15],
+    approachPoint: [0.85, 0, -2.25],
     approachFacingY: -Math.PI / 2,
     triggerRadius: 1.95,
     realPhotoUrl: '/photos/leather_workshop.jpg',
@@ -457,7 +457,7 @@ export const SPACE_STORIES: SpaceStoryData[] = [
       '초록 발커버를 신은 원목 의자 4개',
     ],
     position: [-0.75, 1.15, -4.05],
-    approachPoint: [0.85, 0, -3.55],
+    approachPoint: [0.95, 0, -3.55],
     approachFacingY: -Math.PI / 2,
     triggerRadius: 1.95,
     realPhotoUrl: '/photos/personal_study_table.jpg',
@@ -474,14 +474,14 @@ export const SPACE_STORIES: SpaceStoryData[] = [
       '정수기는 손님도 자유롭게 사용 가능',
     ],
     position: [-2.15, 1.45, -6.15],
-    approachPoint: [0.35, 0, -4.85],
+    approachPoint: [0.65, 0, -4.65],
     approachFacingY: Math.PI * 0.85,
     triggerRadius: 2.1,
     realPhotoUrl: '/photos/sink_and_mugs.jpg',
   },
 ];
 
-// Collision boxes matching furniture, walls, and the entrance doorway
+// Collision boxes matching furniture, walls, and the entrance doorway (sealed flush to walls so visitor can never clip behind or inside furniture)
 export const OBSTACLE_BOXES: ObstacleBox[] = [
   // Storefront Left Wall (West of the entrance door at Z = 6.6)
   {
@@ -489,8 +489,8 @@ export const OBSTACLE_BOXES: ObstacleBox[] = [
     name: '출입문 좌측 외벽 및 창가',
     minX: -4.7,
     maxX: -0.72,
-    minZ: 6.32,
-    maxZ: 6.95,
+    minZ: 6.28,
+    maxZ: 7.05,
     height: 3.4,
     blocksCamera: false,
   },
@@ -500,107 +500,129 @@ export const OBSTACLE_BOXES: ObstacleBox[] = [
     name: '출입문 우측 외벽 및 쇼윈도',
     minX: 1.05,
     maxX: 4.7,
-    minZ: 6.32,
-    maxZ: 6.95,
+    minZ: 6.28,
+    maxZ: 7.05,
     height: 3.4,
     blocksCamera: false,
   },
-  // Right wall main bookcase + back camera/leather/wine shelf (runs along X = 3.85..4.6)
+  // Right wall main bookcase + back camera/leather/wine shelf (runs along X = 3.72..4.7)
   {
     id: 'obs_right_bookcase',
     name: '우측 메인 대형 서가',
-    minX: 3.82,
+    minX: 3.72,
     maxX: 4.7,
-    minZ: -6.7,
+    minZ: -6.8,
     maxZ: 5.65,
     height: 3.2,
     blocksCamera: true,
   },
-  // Entrance right corner plants & wine bottles
+  // Entrance right corner plants & wine bottles (sealed flush to East & South walls)
   {
     id: 'obs_entrance_plants',
     name: '입구 화분 및 와인병 코너',
-    minX: 2.25,
-    maxX: 4.6,
-    minZ: 5.55,
-    maxZ: 6.45,
+    minX: 2.2,
+    maxX: 4.7,
+    minZ: 5.48,
+    maxZ: 6.5,
     height: 1.6,
     blocksCamera: false,
   },
-  // Left wall front 3-tier book ledges
+  // Left wall front 3-tier book ledges (sealed seamlessly between divider shelf and window desk)
   {
     id: 'obs_left_ledges',
     name: '좌측 전면 큐레이션 서가',
     minX: -4.7,
-    maxX: -3.88,
-    minZ: 0.9,
-    maxZ: 5.2,
+    maxX: -3.82,
+    minZ: 0.7,
+    maxZ: 5.3,
     height: 2.8,
     blocksCamera: true,
   },
-  // Window reading desk & trolley (front-left corner flush against West wall)
+  // Window reading desk & yellow book cart (sealed flush to West & South walls)
   {
     id: 'obs_window_desk',
     name: '창가 독서 데스크 및 북카트',
-    minX: -4.55,
-    maxX: -1.45,
-    minZ: 5.32,
-    maxZ: 6.45,
+    minX: -4.7,
+    maxX: -1.42,
+    minZ: 5.26,
+    maxZ: 6.5,
     height: 1.1,
     blocksCamera: false,
   },
-  // Duck mascot & divider open shelf (left-middle partition)
+  // Duck mascot & divider open shelf (sealed flush to West wall)
   {
     id: 'obs_divider_shelf',
     name: '파티션 장식장 및 오리 마스코트',
     minX: -4.7,
-    maxX: -1.55,
-    minZ: -0.48,
-    maxZ: 0.72,
+    maxX: -1.5,
+    minZ: -0.58,
+    maxZ: 0.82,
     height: 2.7,
     blocksCamera: false,
   },
-  // Right-wall attached recommendation table + industrial leather machine behind it
+  // Right-wall attached recommendation table + industrial leather machine behind it (sealed flush to East wall)
   {
     id: 'obs_center_table_and_machine',
     name: '우측 벽 추천 도서 테이블 및 가죽 피할기',
-    minX: 1.38,
-    maxX: 3.95,
-    minZ: -1.55,
-    maxZ: 0.52,
+    minX: 1.32,
+    maxX: 4.7,
+    minZ: -1.62,
+    maxZ: 0.56,
     height: 1.2,
     blocksCamera: false,
   },
-  // Back-left leather workbench, sewing table & central personal study table
+  // Back-right folding minivelo bicycle & leaning boards/props (sealed flush to East bookcase)
+  {
+    id: 'obs_minivelo_bike',
+    name: '후면 미니벨로 자전거 및 소품 코너',
+    minX: 2.42,
+    maxX: 4.7,
+    minZ: -2.92,
+    maxZ: -1.55,
+    height: 1.1,
+    blocksCamera: false,
+  },
+  // Back-right floor props in front of 7-plank concrete-block archive shelf (dehumidifier, trash bins, aluminum step stool)
+  {
+    id: 'obs_archive_floor_props',
+    name: '책방지기 진열장 앞 발판 벤치 및 소품',
+    minX: 3.32,
+    maxX: 4.7,
+    minZ: -6.7,
+    maxZ: -4.2,
+    height: 0.8,
+    blocksCamera: false,
+  },
+  // Back-left leather workbench, sewing table & central personal study table (sealed flush to West wall)
   {
     id: 'obs_leather_workbench',
     name: '딤프치 가죽공방 작업대 및 개인 서재 대형 테이블',
     minX: -4.7,
-    maxX: 0.12,
-    minZ: -5.25,
-    maxZ: -1.65,
+    maxX: 0.16,
+    minZ: -5.3,
+    maxZ: -1.6,
     height: 1.1,
     blocksCamera: false,
   },
-  // Far back wall sink, coffee island counter & water dispenser zone
+  // Far back wall sink, coffee island counter & water dispenser zone (sealed flush to North & West walls)
   {
     id: 'obs_back_counter',
     name: '후면 싱크대 · 커피바 및 냉온수기',
     minX: -4.7,
-    maxX: 2.15,
+    maxX: 2.18,
     minZ: -6.8,
-    maxZ: -5.35,
+    maxZ: -5.3,
     height: 1.5,
     blocksCamera: true,
   },
 ];
 
-// Extended South to Z = 10.2 so the character can start on the road and walk through the entrance!
+// Extended South to Z = 10.65 so the visitor starts on the road outside the entrance and walks smoothly inside
 export const ROOM_BOUNDS = {
-  minX: -3.75,
-  maxX: 3.65,
-  minZ: -5.55,
-  maxZ: 10.1,
+  minX: -3.72,
+  maxX: 3.58,
+  minZ: -5.45,
+  maxZ: 10.65,
 };
 
 // Roadview-style quick navigation nodes on the road and interior floor
@@ -608,61 +630,61 @@ export const WAYPOINT_NODES: WaypointNode[] = [
   {
     id: 'wp_road_outside',
     label: '도로 (독자서점 입구 밖)',
-    position: [0.15, 0, 8.85],
+    position: [0.15, 0, 10.35],
     zone: '도로/외관',
   },
   {
     id: 'wp_entrance',
     label: '출입문 안쪽 (내부 한눈에 보기)',
-    position: [0.15, 0, 5.25],
+    position: [0.15, 0, 5.65],
     zone: '입구',
   },
   {
     id: 'wp_front_lounge',
     label: '전면 메인 홀 (샹들리에 아래)',
-    position: [0.15, 0, 3.05],
+    position: [0.15, 0, 3.15],
     zone: '전면 홀',
   },
   {
     id: 'wp_left_curation',
     label: '독자 추천 도서 서가',
-    position: [-2.85, 0, 2.95],
+    position: [-2.45, 0, 2.85],
     zone: '독자 추천 도서',
   },
   {
     id: 'wp_main_bookshelf',
     label: '메인 5열 서가',
-    position: [2.85, 0, 2.85],
+    position: [2.35, 0, 2.92],
     zone: '우측 전면 서가',
   },
   {
     id: 'wp_center_table',
     label: '추천 도서 테이블',
-    position: [2.15, 0, 1.05],
+    position: [2.15, 0, 1.15],
     zone: '추천 테이블',
   },
   {
     id: 'wp_corridor',
     label: '중앙 통로 (안쪽 공간 입구)',
-    position: [-0.35, 0, 0.05],
+    position: [-0.25, 0, 0.05],
     zone: '중앙 통로',
   },
   {
     id: 'wp_back_bookshelf',
     label: '책방지기의 서재 공간 & 미니벨로',
-    position: [2.05, 0, -2.55],
+    position: [1.75, 0, -2.35],
     zone: '책방지기의 서재',
   },
   {
     id: 'wp_leather_workshop',
     label: '개인 서재 & 딤프치 가죽 작업대',
-    position: [0.95, 0, -3.55],
+    position: [0.95, 0, -3.45],
     zone: '개인 서재/공방',
   },
   {
     id: 'wp_sink_and_mugs',
     label: '안쪽 싱크대 · 머그컵 선반 & 카메라 선반',
-    position: [0.65, 0, -4.85],
+    position: [0.95, 0, -4.65],
     zone: '싱크대/머그컵',
   },
 ];

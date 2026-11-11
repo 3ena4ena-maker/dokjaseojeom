@@ -115,8 +115,8 @@ export const SceneController: React.FC<SceneControllerProps> = ({
   const lastSyncedCameraYawRef = useRef<number>(cameraYawRef.current);
   const lastSyncedCameraPitchRef = useRef<number>(cameraPitchRef.current);
 
-  const smoothLookAtRef = useRef(new THREE.Vector3(0.15, 1.68, 7.8));
-  const smoothCamPosRef = useRef(new THREE.Vector3(0.15, 1.72, 11.8));
+  const smoothLookAtRef = useRef(new THREE.Vector3(0.15, 1.48, 9.35));
+  const smoothCamPosRef = useRef(new THREE.Vector3(0.15, 1.5, 10.35));
   const proximityTimerRef = useRef(0);
   const posSyncTimerRef = useRef(0);
   const wasOutsideRef = useRef<boolean>(true);
@@ -443,6 +443,8 @@ export const SceneController: React.FC<SceneControllerProps> = ({
 
           const [curX, , curZ] = positionRef.current;
           const [targetX, targetZ] = navPathRef.current[0];
+          const [finalX, finalZ] =
+            navPathRef.current[navPathRef.current.length - 1];
           const dx = targetX - curX;
           const dz = targetZ - curZ;
           const dist = Math.hypot(dx, dz);
@@ -463,7 +465,7 @@ export const SceneController: React.FC<SceneControllerProps> = ({
               }
             }
           } else {
-            const speed = 2.6;
+            const speed = 2.65;
             const step = Math.min(dist, speed * dt);
             const dirX = dx / dist;
             const dirZ = dz / dist;
@@ -478,14 +480,20 @@ export const SceneController: React.FC<SceneControllerProps> = ({
             const stepElevation =
               resolvedZ > 7.45 ? -0.18 : resolvedZ > 7.05 ? -0.09 : 0;
             positionRef.current = [resolvedX, stepElevation, resolvedZ];
-            const targetRot = Math.atan2(dirX, dirZ);
-            rotationYRef.current = stepAngleSmoothCapped(
-              rotationYRef.current,
-              targetRot,
-              4.5,
-              2.8,
-              dt
-            );
+
+            // Look smoothly toward the final destination rather than jerking sideways at intermediate obstacle corners
+            const goalDx = finalX - resolvedX;
+            const goalDz = finalZ - resolvedZ;
+            if (Math.hypot(goalDx, goalDz) > 0.25) {
+              const targetRot = Math.atan2(goalDx, goalDz);
+              rotationYRef.current = stepAngleSmoothCapped(
+                rotationYRef.current,
+                targetRot,
+                3.6,
+                2.2,
+                dt
+              );
+            }
 
             if (actionState !== 'WALKING') {
               onActionStateChange('WALKING');
@@ -525,7 +533,7 @@ export const SceneController: React.FC<SceneControllerProps> = ({
       wasOutsideRef.current = true;
     }
 
-    // 4. First-Person VR Gaze & Eye-Level Camera Transform
+    // 4. First-Person VR Gaze & Eye-Level Camera Transform (Camera Position = Visitor Position)
     if (
       Math.abs(
         normalizeAngle(cameraYawRef.current - lastSyncedCameraYawRef.current)
@@ -577,37 +585,31 @@ export const SceneController: React.FC<SceneControllerProps> = ({
     const pitch = cameraPitchRef.current;
     const yaw = cameraYawRef.current;
 
-    const horizDist = camDist * Math.cos(pitch);
-    const vertOffset = camDist * Math.sin(pitch);
-
-    const desiredCamX = charX + Math.sin(yaw) * horizDist;
-    const desiredCamY = lookTargetY + vertOffset;
-    const desiredCamZ = charZ + Math.cos(yaw) * horizDist;
-
+    // True First-Person VR camera position: zero horizontal offset so the camera never swings inside or behind furniture!
     const [safeCamX, safeCamY, safeCamZ] = computeSafeCameraPosition(
       charX,
       lookTargetY,
       charZ,
-      desiredCamX,
-      desiredCamY,
-      desiredCamZ,
+      charX,
+      lookTargetY,
+      charZ,
       camDist
     );
 
-    // Default to the wide '한눈에 보기' panoramic FOV ratio both at the entrance and inside the store
+    // Optical zoom via FOV: defaults to the wide '한눈에 보기' panoramic FOV ratio (~68° at camDist = 3.1)
     if (camera instanceof THREE.PerspectiveCamera) {
       const aspect = size.width / Math.max(1, size.height);
       const portraitBoost = aspect < 1.0 ? (1.0 - aspect) * 28 : 0;
       const zoomRatio = (camDist - 0.9) / (4.2 - 0.9);
-      const baseFov = 54 + zoomRatio * 20;
-      const targetFov = Math.min(88, baseFov + portraitBoost);
+      const baseFov = 42 + zoomRatio * 38;
+      const targetFov = Math.min(90, baseFov + portraitBoost);
       if (Math.abs(camera.fov - targetFov) > 0.05) {
-        camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6.0);
+        camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6.5);
         camera.updateProjectionMatrix();
       }
     }
 
-    const camLerp = Math.min(1, dt * (isManualLooking ? 16.0 : 7.5));
+    const camLerp = Math.min(1, dt * (isManualLooking ? 16.0 : 9.0));
     smoothCamPosRef.current.lerp(
       new THREE.Vector3(safeCamX, safeCamY, safeCamZ),
       camLerp
@@ -616,11 +618,11 @@ export const SceneController: React.FC<SceneControllerProps> = ({
     const viewFwdX = -Math.sin(yaw) * Math.cos(pitch);
     const viewFwdY = -Math.sin(pitch);
     const viewFwdZ = -Math.cos(yaw) * Math.cos(pitch);
-    const lookAheadDist = 0.75;
+    const lookAheadDist = 1.0;
 
-    const lookTargetX = charX + viewFwdX * lookAheadDist;
-    const lookTargetYWithPitch = lookTargetY + viewFwdY * lookAheadDist;
-    const lookTargetZ = charZ + viewFwdZ * lookAheadDist;
+    const lookTargetX = safeCamX + viewFwdX * lookAheadDist;
+    const lookTargetYWithPitch = safeCamY + viewFwdY * lookAheadDist;
+    const lookTargetZ = safeCamZ + viewFwdZ * lookAheadDist;
 
     smoothLookAtRef.current.lerp(
       new THREE.Vector3(lookTargetX, lookTargetYWithPitch, lookTargetZ),

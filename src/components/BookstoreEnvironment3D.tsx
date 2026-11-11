@@ -18,7 +18,10 @@ import {
   TableObjectData,
   WaypointNode,
 } from '../types';
-import { isPointWalkable } from '../systems/collisionAndNav';
+import {
+  findNearestWalkablePoint,
+  isPointWalkable,
+} from '../systems/collisionAndNav';
 import { BookshopOwner3D } from './BookshopOwner3D';
 
 interface BookstoreEnvironment3DProps {
@@ -572,24 +575,48 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
       e.clientY - pointerDownPosRef.current.y
     );
     pointerDownPosRef.current = null;
-    if (moveDist > 4) return;
+    if (moveDist > 5) return;
     e.stopPropagation();
 
     const hitX = e.point.x;
     const hitZ = e.point.z;
-    if (isPointWalkable(hitX, hitZ)) {
-      onFloorClick(hitX, hitZ);
+    const nearest = findNearestWalkablePoint(
+      hitX,
+      hitZ,
+      2.5,
+      characterPos[0],
+      characterPos[2]
+    );
+    if (nearest) {
+      onFloorClick(nearest[0], nearest[1]);
     }
   };
 
   const handleFloorPointerMove = (e: ThreeEvent<PointerEvent>) => {
     const hitX = e.point.x;
     const hitZ = e.point.z;
-    setFloorCursor({
-      x: hitX,
-      z: hitZ,
-      walkable: isPointWalkable(hitX, hitZ),
-    });
+    const nearest = isPointWalkable(hitX, hitZ)
+      ? ([hitX, hitZ] as [number, number])
+      : findNearestWalkablePoint(
+          hitX,
+          hitZ,
+          2.0,
+          characterPos[0],
+          characterPos[2]
+        );
+    if (nearest) {
+      setFloorCursor({
+        x: nearest[0],
+        z: nearest[1],
+        walkable: true,
+      });
+    } else {
+      setFloorCursor({
+        x: hitX,
+        z: hitZ,
+        walkable: false,
+      });
+    }
   };
 
   const placedBookIds = useMemo(() => {
@@ -1010,7 +1037,12 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
       />
 
       {/* Front Red/Burgundy Ornate Persian Rug (under chandelier) */}
-      <group position={[0.15, 0.008, 3.15]}>
+      <group
+        position={[0.15, 0.008, 3.15]}
+        onPointerDown={handleFloorPointerDown}
+        onPointerUp={handleFloorPointerUp}
+        onPointerMove={handleFloorPointerMove}
+      >
         {/* Outer Cream Fringe Border */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[4.2, 3.25]} />
@@ -1043,7 +1075,12 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
       </group>
 
       {/* Back Navy & Beige Patterned Vintage Persian Rug (between leather workbench, personal study & back bookcase/bicycle) */}
-      <group position={[1.15, 0.008, -2.35]}>
+      <group
+        position={[1.15, 0.008, -2.35]}
+        onPointerDown={handleFloorPointerDown}
+        onPointerUp={handleFloorPointerUp}
+        onPointerMove={handleFloorPointerMove}
+      >
         {/* Outer Warm Beige Fringe Border */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[3.35, 3.65]} />
@@ -1076,7 +1113,13 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
       </group>
 
       {/* Black Entrance Doormat just inside the doorway */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.25, 0.01, 5.95]}>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0.25, 0.01, 5.95]}
+        onPointerDown={handleFloorPointerDown}
+        onPointerUp={handleFloorPointerUp}
+        onPointerMove={handleFloorPointerMove}
+      >
         <planeGeometry args={[1.38, 0.72]} />
         <meshStandardMaterial color="#27272a" roughness={0.95} />
       </mesh>

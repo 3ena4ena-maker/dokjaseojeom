@@ -1,6 +1,6 @@
 import { OBSTACLE_BOXES, ROOM_BOUNDS } from '../data/bookstoreData';
 
-const CHARACTER_RADIUS = 0.26;
+const CHARACTER_RADIUS = 0.34;
 
 export function isPointWalkable(
   x: number,
@@ -30,6 +30,7 @@ export function isPointWalkable(
   return true;
 }
 
+// Automatically deflects around furniture & obstacles when moving straight into them (`가구, 물건을 비켜서 직진`)
 export function resolveCharacterMovement(
   currentX: number,
   currentZ: number,
@@ -49,14 +50,119 @@ export function resolveCharacterMovement(
     return [clampedX, clampedZ, false];
   }
 
-  // Try sliding along X only
-  if (isPointWalkable(clampedX, currentZ)) {
-    return [clampedX, currentZ, true];
+  const dx = targetX - currentX;
+  const dz = targetZ - currentZ;
+  const stepLen = Math.hypot(dx, dz);
+  if (stepLen < 1e-5) {
+    return [currentX, currentZ, true];
   }
 
-  // Try sliding along Z only
-  if (isPointWalkable(currentX, clampedZ)) {
+  // 1. Identify which obstacle box is blocking the desired step and find its open aisle side
+  const pad = CHARACTER_RADIUS;
+  let preferredLateralX = 0; // -1 = go West (-X), +1 = go East (+X)
+  let preferredLateralZ = 0; // -1 = go North (-Z), +1 = go South (+Z)
+
+  for (const box of OBSTACLE_BOXES) {
+    if (
+      clampedX >= box.minX - pad &&
+      clampedX <= box.maxX + pad &&
+      clampedZ >= box.minZ - pad &&
+      clampedZ <= box.maxZ + pad
+    ) {
+      const westEdge = box.minX - pad - 0.08;
+      const eastEdge = box.maxX + pad + 0.08;
+      const westOpen = westEdge >= ROOM_BOUNDS.minX + pad * 0.4;
+      const eastOpen = eastEdge <= ROOM_BOUNDS.maxX - pad * 0.4;
+
+      if (eastOpen && !westOpen) {
+        preferredLateralX = 1;
+      } else if (westOpen && !eastOpen) {
+        preferredLateralX = -1;
+      } else if (westOpen && eastOpen) {
+        // Storefront doorway gap is around X = 0.16; otherwise pick the closer edge
+        const distWest = Math.abs(currentX - westEdge);
+        const distEast = Math.abs(eastEdge - currentX);
+        preferredLateralX = distWest <= distEast ? -1 : 1;
+      }
+
+      const northEdge = box.minZ - pad - 0.08;
+      const southEdge = box.maxZ + pad + 0.08;
+      const northOpen = northEdge >= ROOM_BOUNDS.minZ + pad * 0.4;
+      const southOpen = southEdge <= ROOM_BOUNDS.maxZ - pad * 0.4;
+
+      if (southOpen && !northOpen) {
+        preferredLateralZ = 1;
+      } else if (northOpen && !southOpen) {
+        preferredLateralZ = -1;
+      } else if (northOpen && southOpen) {
+        const distNorth = Math.abs(currentZ - northEdge);
+        const distSouth = Math.abs(southEdge - currentZ);
+        preferredLateralZ = distNorth <= distSouth ? -1 : 1;
+      }
+      break;
+    }
+  }
+
+  // 2. Multi-angle deflection fan (`±18° .. ±90°`) biased toward the open aisle side of the furniture
+  const baseAngle = Math.atan2(dx, dz);
+  // Determine which angular turn (+angle vs -angle) moves toward the open aisle
+  let preferredTurnSign = 1;
+  if (Math.abs(dz) >= Math.abs(dx) && preferredLateralX !== 0) {
+    const testXPos = Math.sin(baseAngle + Math.PI / 3);
+    preferredTurnSign =
+      Math.sign(testXPos) === preferredLateralX ? 1 : -1;
+  } else if (Math.abs(dx) > Math.abs(dz) && preferredLateralZ !== 0) {
+    const testZPos = Math.cos(baseAngle + Math.PI / 3);
+    preferredTurnSign =
+      Math.sign(testZPos) === preferredLateralZ ? 1 : -1;
+  } else {
+    // Probe lookahead at ±55° to see which side has more open space
+    const probeDist = 0.85;
+    const posOpen = isPointWalkable(
+      currentX + Math.sin(baseAngle + 0.95) * probeDist,
+      currentZ + Math.cos(baseAngle + 0.95) * probeDist
+    );
+    const negOpen = isPointWalkable(
+      currentX + Math.sin(baseAngle - 0.95) * probeDist,
+      currentZ + Math.cos(baseAngle - 0.95) * probeDist
+    );
+    if (negOpen && !posOpen) preferredTurnSign = -1;
+  }
+
+  const angleDegs = [18, 34, 50, 66, 80, 92];
+  for (const scale of [1.0, 0.72]) {
+    for (const deg of angleDegs) {
+      const rad = (deg * Math.PI) / 180;
+      for (const sign of [preferredTurnSign, -preferredTurnSign]) {
+        const candX = currentX + Math.sin(baseAngle + rad * sign) * stepLen * scale;
+        const candZ = currentZ + Math.cos(baseAngle + rad * sign) * stepLen * scale;
+        if (isPointWalkable(candX, candZ)) {
+          return [candX, candZ, true];
+        }
+      }
+    }
+  }
+
+  // 3. Fallback axis-aligned slide
+  if (Math.abs(clampedX - currentX) > 1e-4 && isPointWalkable(clampedX, currentZ)) {
+    return [clampedX, currentZ, true];
+  }
+  if (Math.abs(clampedZ - currentZ) > 1e-4 && isPointWalkable(currentX, clampedZ)) {
     return [currentX, clampedZ, true];
+  }
+
+  // 4. Direct lateral sidestep around blocking furniture face when walking dead-on perpendicular
+  if (preferredLateralX !== 0) {
+    const sideX = currentX + preferredLateralX * stepLen * 0.9;
+    if (isPointWalkable(sideX, currentZ)) {
+      return [sideX, currentZ, true];
+    }
+  }
+  if (preferredLateralZ !== 0) {
+    const sideZ = currentZ + preferredLateralZ * stepLen * 0.9;
+    if (isPointWalkable(currentX, sideZ)) {
+      return [currentX, sideZ, true];
+    }
   }
 
   return [currentX, currentZ, true];
@@ -65,16 +171,27 @@ export function resolveCharacterMovement(
 export function findNearestWalkablePoint(
   x: number,
   z: number,
-  maxSearchRadius = 1.5
+  maxSearchRadius = 2.5,
+  preferFromX?: number,
+  preferFromZ?: number
 ): [number, number] | null {
   if (isPointWalkable(x, z)) return [x, z];
 
-  const radialSteps = 14;
-  const angleSteps = 24;
+  const radialSteps = 18;
+  const angleSteps = 28;
+  const hasPrefer = preferFromX !== undefined && preferFromZ !== undefined;
+  const basePrefAngle = hasPrefer
+    ? Math.atan2(preferFromZ! - z, preferFromX! - x)
+    : 0;
+
   for (let rIdx = 1; rIdx <= radialSteps; rIdx++) {
     const r = (rIdx / radialSteps) * maxSearchRadius;
     for (let aIdx = 0; aIdx < angleSteps; aIdx++) {
-      const angle = (aIdx / angleSteps) * Math.PI * 2;
+      // Alternate +/- around basePrefAngle so we always pick the side of the furniture facing the visitor
+      const offsetIdx =
+        aIdx % 2 === 0 ? aIdx / 2 : -Math.ceil(aIdx / 2);
+      const angle =
+        basePrefAngle + (offsetIdx / angleSteps) * Math.PI * 2;
       const nx = x + Math.cos(angle) * r;
       const nz = z + Math.sin(angle) * r;
       if (isPointWalkable(nx, nz)) {
@@ -93,7 +210,7 @@ function hasLineOfSight(
   padding = CHARACTER_RADIUS
 ): boolean {
   const dist = Math.hypot(x2 - x1, z2 - z1);
-  const steps = Math.max(2, Math.ceil(dist / 0.12));
+  const steps = Math.max(2, Math.ceil(dist / 0.1));
   for (let i = 1; i <= steps; i++) {
     const t = i / steps;
     const x = x1 + (x2 - x1) * t;
@@ -106,11 +223,11 @@ function hasLineOfSight(
 }
 
 // A* Grid Pathfinding around furniture, doorway & bookshelves
-const GRID_STEP = 0.25;
-const GRID_MIN_X = -3.75;
-const GRID_MAX_X = 3.65;
-const GRID_MIN_Z = -5.55;
-const GRID_MAX_Z = 10.1;
+const GRID_STEP = 0.22;
+const GRID_MIN_X = -3.72;
+const GRID_MAX_X = 3.58;
+const GRID_MIN_Z = -5.45;
+const GRID_MAX_Z = 10.65;
 
 const COLS = Math.floor((GRID_MAX_X - GRID_MIN_X) / GRID_STEP) + 1;
 const ROWS = Math.floor((GRID_MAX_Z - GRID_MIN_Z) / GRID_STEP) + 1;
@@ -137,21 +254,28 @@ export function findNavigationPath(
   goalX: number,
   goalZ: number
 ): Array<[number, number]> {
-  const validGoal = findNearestWalkablePoint(goalX, goalZ, 1.4);
-  if (!validGoal) return [];
-
-  const [gx, gz] = validGoal;
-
-  // Direct line-of-sight shortcut
-  if (hasLineOfSight(startX, startZ, gx, gz, CHARACTER_RADIUS * 0.9)) {
-    return [[gx, gz]];
-  }
-
-  const validStart = findNearestWalkablePoint(startX, startZ, 1.2) ?? [
+  const validStart = findNearestWalkablePoint(startX, startZ, 1.6) ?? [
     startX,
     startZ,
   ];
-  const [sc, sr] = toGrid(validStart[0], validStart[1]);
+  const validGoal = findNearestWalkablePoint(
+    goalX,
+    goalZ,
+    2.6,
+    validStart[0],
+    validStart[1]
+  );
+  if (!validGoal) return [];
+
+  const [sx, sz] = validStart;
+  const [gx, gz] = validGoal;
+
+  // Direct line-of-sight shortcut
+  if (hasLineOfSight(sx, sz, gx, gz, CHARACTER_RADIUS * 0.92)) {
+    return [[gx, gz]];
+  }
+
+  const [sc, sr] = toGrid(sx, sz);
   const [ec, er] = toGrid(gx, gz);
 
   const key = (c: number, r: number) => r * COLS + c;
@@ -180,7 +304,7 @@ export function findNavigationPath(
   let bestHeuristic = Math.hypot(ec - sc, er - sr);
   let iterations = 0;
 
-  while (openSet.size > 0 && iterations < 2400) {
+  while (openSet.size > 0 && iterations < 3200) {
     iterations++;
     let current = -1;
     let lowestF = Infinity;
@@ -214,7 +338,19 @@ export function findNavigationPath(
       if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
 
       const [wx, wz] = toWorld(nc, nr);
-      if (!isPointWalkable(wx, wz, CHARACTER_RADIUS * 0.85)) continue;
+      if (!isPointWalkable(wx, wz, CHARACTER_RADIUS * 0.88)) continue;
+
+      // Prevent diagonal corner-cutting across furniture corners
+      if (dc !== 0 && dr !== 0) {
+        const [wx1, wz1] = toWorld(cc + dc, cr);
+        const [wx2, wz2] = toWorld(cc, cr + dr);
+        if (
+          !isPointWalkable(wx1, wz1, CHARACTER_RADIUS * 0.82) ||
+          !isPointWalkable(wx2, wz2, CHARACTER_RADIUS * 0.82)
+        ) {
+          continue;
+        }
+      }
 
       const nKey = key(nc, nr);
       const tentativeG = (gScore.get(current) ?? Infinity) + cost;
@@ -242,10 +378,10 @@ export function findNavigationPath(
     return [[gx, gz]];
   }
 
-  // String-pulling path smoothing
+  // String-pulling path smoothing so movement follows natural straight lines
   const smoothed: Array<[number, number]> = [];
-  let anchorX = startX;
-  let anchorZ = startZ;
+  let anchorX = sx;
+  let anchorZ = sz;
   let idx = 0;
 
   while (idx < rawPath.length) {
@@ -257,7 +393,7 @@ export function findNavigationPath(
           anchorZ,
           rawPath[probe][0],
           rawPath[probe][1],
-          CHARACTER_RADIUS * 0.82
+          CHARACTER_RADIUS * 0.88
         )
       ) {
         furthest = probe;
@@ -273,8 +409,6 @@ export function findNavigationPath(
   return smoothed;
 }
 
-// Camera position computation: once inside the bookstore (Z <= 6.35), strictly keep camera inside the interior walls
-// while preserving the exact horizontal & vertical ray direction from target to camera so in-place gaze rotation never gets stuck in corners!
 export function computeSafeCameraPosition(
   targetX: number,
   targetY: number,
@@ -286,47 +420,16 @@ export function computeSafeCameraPosition(
 ): [number, number, number] {
   const isCharacterOutside = targetZ > 6.35;
 
-  const minX = isCharacterOutside ? -4.8 : -4.18;
-  const maxX = isCharacterOutside ? 4.8 : 3.88;
-  const minZ = isCharacterOutside ? 6.45 : -6.22;
-  const maxZ = isCharacterOutside ? 12.2 : 6.15;
-  const minY = 0.55;
-  const maxY = isCharacterOutside ? 4.2 : 3.15;
+  const minX = isCharacterOutside ? -4.6 : -4.05;
+  const maxX = isCharacterOutside ? 4.6 : 3.72;
+  const minZ = isCharacterOutside ? 6.4 : -6.05;
+  const maxZ = isCharacterOutside ? 11.2 : 6.12;
+  const minY = 0.65;
+  const maxY = isCharacterOutside ? 3.8 : 3.05;
 
-  // Clamp anchor slightly inside bounds so ray scaling always works cleanly
-  const anchorX = Math.max(minX + 0.05, Math.min(maxX - 0.05, targetX));
-  const anchorY = Math.max(minY + 0.05, Math.min(maxY - 0.05, targetY));
-  const anchorZ = Math.max(minZ + 0.05, Math.min(maxZ - 0.05, targetZ));
-
-  const dx = desiredCamX - anchorX;
-  const dy = desiredCamY - anchorY;
-  const dz = desiredCamZ - anchorZ;
-
-  let t = 1.0;
-
-  if (dx > 0.0001 && anchorX + dx * t > maxX) {
-    t = Math.min(t, (maxX - anchorX) / dx);
-  } else if (dx < -0.0001 && anchorX + dx * t < minX) {
-    t = Math.min(t, (minX - anchorX) / dx);
-  }
-
-  if (dz > 0.0001 && anchorZ + dz * t > maxZ) {
-    t = Math.min(t, (maxZ - anchorZ) / dz);
-  } else if (dz < -0.0001 && anchorZ + dz * t < minZ) {
-    t = Math.min(t, (minZ - anchorZ) / dz);
-  }
-
-  if (dy > 0.0001 && anchorY + dy * t > maxY) {
-    t = Math.min(t, (maxY - anchorY) / dy);
-  } else if (dy < -0.0001 && anchorY + dy * t < minY) {
-    t = Math.min(t, (minY - anchorY) / dy);
-  }
-
-  t = Math.max(0.08, Math.min(1.0, t));
-
-  const finalX = anchorX + dx * t;
-  const finalY = anchorY + dy * t;
-  const finalZ = anchorZ + dz * t;
+  const finalX = Math.max(minX, Math.min(maxX, desiredCamX));
+  const finalY = Math.max(minY, Math.min(maxY, desiredCamY));
+  const finalZ = Math.max(minZ, Math.min(maxZ, desiredCamZ));
 
   return [finalX, finalY, finalZ];
 }
