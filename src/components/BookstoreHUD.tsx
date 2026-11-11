@@ -9,13 +9,19 @@ import {
   HelpCircle,
   Info,
   Lamp,
+  Lock,
+  LogOut,
   MapPin,
   Maximize2,
   Pause,
   Play,
+  Plus,
   RotateCcw,
   Sparkles,
+  StickyNote,
   Timer,
+  Trash2,
+  UserCheck,
   Volume2,
   VolumeX,
   X,
@@ -23,6 +29,7 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import {
+  POSTIT_COLORS,
   REPRESENTATIVE_BOOKS,
   SEAT_OBJECTS,
   SPACE_STORIES,
@@ -35,6 +42,8 @@ import {
   BookItem,
   CharacterActionState,
   GenreShelfData,
+  GuestbookPostIt,
+  GuestbookUser,
   SeatObjectData,
   SpaceStoryData,
   TableObjectData,
@@ -99,6 +108,25 @@ interface BookstoreHUDProps {
   selectedOwnerQuestionIdx?: number | null;
   onSelectOwnerQuestion?: (idx: number) => void;
   onCloseOwnerTalk?: () => void;
+  guestbookPosts: GuestbookPostIt[];
+  selectedPostItId: string | null;
+  isGuestbookModalOpen: boolean;
+  guestbookUser: GuestbookUser | null;
+  onSelectPostIt: (postId: string) => void;
+  onCloseGuestbookModal: () => void;
+  onWalkToGuestbookWall: () => void;
+  onSignUpGuestbookUser: (
+    nickname: string,
+    provider: 'pin' | 'kakao' | 'naver' | 'google',
+    pin?: string
+  ) => void;
+  onLogoutGuestbookUser: () => void;
+  onAddGuestbookPostIt: (
+    content: string,
+    rating: number,
+    color: string
+  ) => void;
+  onDeleteGuestbookPostIt: (postId: string) => void;
 }
 
 export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
@@ -148,12 +176,39 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
   selectedOwnerQuestionIdx = null,
   onSelectOwnerQuestion,
   onCloseOwnerTalk,
+  guestbookPosts,
+  selectedPostItId,
+  isGuestbookModalOpen,
+  guestbookUser,
+  onSelectPostIt,
+  onCloseGuestbookModal,
+  onWalkToGuestbookWall,
+  onSignUpGuestbookUser,
+  onLogoutGuestbookUser,
+  onAddGuestbookPostIt,
+  onDeleteGuestbookPostIt,
 }) => {
   const [showMinimap, setShowMinimap] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(true);
   const [showPhotoGallery, setShowPhotoGallery] = useState(false);
   const [showTimerAsmrModal, setShowTimerAsmrModal] = useState(false);
   const [showStampTourModal, setShowStampTourModal] = useState(false);
+
+  // Guestbook Write & Simple Sign-up Form State
+  const [isWritingPostIt, setIsWritingPostIt] = useState(false);
+  const [signupProvider, setSignupProvider] = useState<
+    'pin' | 'kakao' | 'naver' | 'google'
+  >('pin');
+  const [signupNickname, setSignupNickname] = useState('');
+  const [signupPin, setSignupPin] = useState('');
+  const [signupError, setSignupError] = useState<string | null>(null);
+
+  const [newPostRating, setNewPostRating] = useState<number>(5);
+  const [newPostColor, setNewPostColor] = useState<string>(
+    POSTIT_COLORS[0].hex
+  );
+  const [newPostContent, setNewPostContent] = useState<string>('');
+  const [postError, setPostError] = useState<string | null>(null);
 
   // Reading Focus Timer State (10 / 25 / 45 min Pomodoro)
   const [timerDurationMinutes, setTimerDurationMinutes] = useState<10 | 25 | 45>(
@@ -341,6 +396,21 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
             <Award className="h-3.5 w-3.5 shrink-0" />
             <span className="text-[11px] sm:text-xs">
               {collectedStampIds.length}/{STAMP_MISSIONS.length}
+            </span>
+          </button>
+
+          {/* Post-it Guestbook Wall Shortcut Button */}
+          <button
+            type="button"
+            data-testid="guestbook-wall-btn"
+            onClick={onWalkToGuestbookWall}
+            title="중간 책장 옆 포스트잇 방명록으로 이동"
+            className="shrink-0 whitespace-nowrap flex h-6 md:h-auto items-center gap-1 rounded-[4px] bg-amber-300/20 px-1.5 sm:px-2 md:py-1 text-xs text-amber-200 hover:bg-amber-300/35 hover:text-white transition cursor-pointer"
+          >
+            <StickyNote className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">방명록</span>
+            <span className="text-[11px] sm:text-xs text-amber-100/90">
+              {guestbookPosts.length}
             </span>
           </button>
 
@@ -1528,6 +1598,462 @@ export const BookstoreHUD: React.FC<BookstoreHUDProps> = ({
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          MODAL 9: POST-IT GUESTBOOK & SIMPLE SIGN-UP (`포스트잇 방명록 & 별점`)
+         ============================================================ */}
+      {isGuestbookModalOpen && (
+        <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-sm">
+          <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-[#24160d]/92 p-5 sm:p-6 text-white shadow-2xl backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={() => {
+                setIsWritingPostIt(false);
+                onCloseGuestbookModal();
+              }}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/12 text-white/80 hover:bg-white/25 hover:text-white transition cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Header: Title, Average Star Rating & Simple Sign-up Status */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pr-10">
+              <div>
+                <div className="flex items-center gap-2">
+                  <StickyNote className="h-5 w-5 text-amber-300" />
+                  <h2 className="text-lg sm:text-xl text-white">
+                    중간 책장 옆 포스트잇 방명록
+                  </h2>
+                </div>
+                <p className="mt-0.5 text-xs text-white/75">
+                  책장 옆에 붙은 포스트잇을 눌러 방문객들의 한 줄 방명록을 읽어보세요.
+                </p>
+              </div>
+
+              {(() => {
+                const avgRating =
+                  guestbookPosts.length > 0
+                    ? (
+                        guestbookPosts.reduce((acc, p) => acc + p.rating, 0) /
+                        guestbookPosts.length
+                      ).toFixed(1)
+                    : '5.0';
+                return (
+                  <div className="flex items-center gap-2 rounded-xl bg-black/35 px-3 py-1.5">
+                    <span className="text-sm text-yellow-400">★ {avgRating}</span>
+                    <span className="text-xs text-white/70">
+                      ({guestbookPosts.length}장 부착됨)
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* 1. Selected Post-it Up-Close View (Reveals the 1-line guestbook note when clicked!) */}
+            {(() => {
+              const activePost =
+                guestbookPosts.find((p) => p.id === selectedPostItId) ??
+                guestbookPosts[0];
+              if (!activePost) return null;
+
+              const colorMeta =
+                POSTIT_COLORS.find((c) => c.hex === activePost.color) ??
+                POSTIT_COLORS[0];
+              const isMine =
+                guestbookUser &&
+                guestbookUser.nickname === activePost.authorName;
+
+              return (
+                <div className="mt-4 flex flex-col sm:flex-row items-center gap-4 rounded-xl bg-black/30 p-4">
+                  {/* Large Realistic Post-it Note Card */}
+                  <div
+                    className="relative w-full sm:w-64 shrink-0 rounded-sm p-4 shadow-xl transition-transform"
+                    style={{
+                      backgroundColor: activePost.color,
+                      color: colorMeta.textHex,
+                      transform: `rotate(${activePost.tilt * 18}deg)`,
+                    }}
+                  >
+                    {/* Top Adhesive Shadow Strip */}
+                    <div className="absolute inset-x-0 top-0 h-3 bg-black/6" />
+
+                    <div className="mt-1 flex items-center justify-between text-xs opacity-80">
+                      <span>📝 {activePost.authorName}</span>
+                      <span>{activePost.createdAt}</span>
+                    </div>
+
+                    <div className="mt-1.5 flex items-center gap-0.5 text-sm text-amber-600">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <span key={i}>
+                          {i < activePost.rating ? '★' : '☆'}
+                        </span>
+                      ))}
+                      <span className="ml-1 text-xs">
+                        ({activePost.rating}.0)
+                      </span>
+                    </div>
+
+                    <p className="mt-3 min-h-[2.75rem] text-sm sm:text-base leading-snug break-keep">
+                      “{activePost.content}”
+                    </p>
+
+                    {isMine && (
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => onDeleteGuestbookPostIt(activePost.id)}
+                          className="flex items-center gap-1 rounded bg-black/15 px-2 py-0.5 text-[11px] hover:bg-black/25 transition cursor-pointer"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>내 포스트잇 떼기</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Side Info & Action Button to Stick a New Post-it */}
+                  <div className="flex flex-1 flex-col justify-between gap-3 w-full">
+                    <div className="rounded-lg bg-white/8 p-3 text-xs leading-relaxed text-white/85">
+                      <div className="text-amber-200">
+                        💡 포스트잇을 눌러야 방명록 글이 보입니다
+                      </div>
+                      <p className="mt-1 text-white/75">
+                        3D 공간의 중간 책장 옆 포스트잇이나 아래 보드의 포스트잇을 클릭하면 한 줄 메시지와 별점을 확인할 수 있습니다.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      {guestbookUser ? (
+                        <div className="flex items-center gap-2 text-xs text-emerald-300">
+                          <UserCheck className="h-4 w-4 shrink-0" />
+                          <span>
+                            <strong>{guestbookUser.nickname}</strong>님 로그인됨
+                          </span>
+                          <button
+                            type="button"
+                            onClick={onLogoutGuestbookUser}
+                            className="ml-1 flex items-center gap-0.5 rounded bg-white/10 px-2 py-0.5 text-[11px] text-white/75 hover:bg-white/20 hover:text-white cursor-pointer"
+                          >
+                            <LogOut className="h-3 w-3" />
+                            <span>변경</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-xs text-amber-200/90">
+                          <Lock className="h-3.5 w-3.5 shrink-0" />
+                          <span>간편가입 후 한 줄 방명록과 별점을 남길 수 있습니다</span>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsWritingPostIt((v) => !v);
+                          setSignupError(null);
+                          setPostError(null);
+                        }}
+                        className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-3.5 py-2 text-xs text-neutral-950 hover:bg-amber-300 transition cursor-pointer shadow-md"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>
+                          {isWritingPostIt
+                            ? '작성 창 닫기'
+                            : '새 포스트잇 붙이기'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 2. Simple Sign-Up (`간편가입`) OR 1-Line Post-it Write Form */}
+            {isWritingPostIt && (
+              <div className="mt-4 rounded-xl bg-black/40 p-4">
+                {!guestbookUser ? (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm text-amber-200">
+                        ✨ 3초 간편가입 (방명록 & 별점 작성 전용)
+                      </h3>
+                      <span className="text-[11px] text-white/60">
+                        개인정보 없이 닉네임만으로 바로 가입됩니다
+                      </span>
+                    </div>
+
+                    {/* Simple Sign-Up Method Tabs */}
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {[
+                        {
+                          id: 'pin',
+                          label: '닉네임 + 4자리 PIN (추천)',
+                          bg: 'bg-amber-400 text-neutral-950',
+                        },
+                        {
+                          id: 'kakao',
+                          label: '카카오 간편가입',
+                          bg: 'bg-[#FEE500] text-[#191919]',
+                        },
+                        {
+                          id: 'naver',
+                          label: '네이버 간편가입',
+                          bg: 'bg-[#03C75A] text-white',
+                        },
+                        {
+                          id: 'google',
+                          label: '구글 간편가입',
+                          bg: 'bg-white text-neutral-900',
+                        },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => {
+                            setSignupProvider(
+                              tab.id as 'pin' | 'kakao' | 'naver' | 'google'
+                            );
+                            setSignupError(null);
+                          }}
+                          className={`rounded-lg px-3 py-1.5 text-xs transition cursor-pointer ${
+                            signupProvider === tab.id
+                              ? `${tab.bg} shadow-sm`
+                              : 'bg-white/10 text-white/80 hover:bg-white/20'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        maxLength={12}
+                        value={signupNickname}
+                        onChange={(e) => setSignupNickname(e.target.value)}
+                        placeholder="사용할 닉네임 (예: 성수동독서가)"
+                        className="flex-1 rounded-lg bg-white/12 px-3 py-2 text-xs text-white placeholder-white/45 outline-none focus:bg-white/18"
+                      />
+                      {signupProvider === 'pin' && (
+                        <input
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={4}
+                          value={signupPin}
+                          onChange={(e) =>
+                            setSignupPin(e.target.value.replace(/[^0-9]/g, ''))
+                          }
+                          placeholder="4자리 숫자 PIN"
+                          className="w-full sm:w-36 rounded-lg bg-white/12 px-3 py-2 text-xs text-white placeholder-white/45 outline-none focus:bg-white/18"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const trimmed = signupNickname.trim();
+                          if (trimmed.length < 2) {
+                            setSignupError('닉네임을 2글자 이상 입력해 주세요.');
+                            return;
+                          }
+                          if (
+                            signupProvider === 'pin' &&
+                            signupPin.length !== 4
+                          ) {
+                            setSignupError('4자리 숫자 PIN을 입력해 주세요.');
+                            return;
+                          }
+                          onSignUpGuestbookUser(
+                            trimmed,
+                            signupProvider,
+                            signupPin || undefined
+                          );
+                          setSignupNickname('');
+                          setSignupPin('');
+                          setSignupError(null);
+                        }}
+                        className="shrink-0 rounded-lg bg-amber-400 px-4 py-2 text-xs text-neutral-950 hover:bg-amber-300 transition cursor-pointer"
+                      >
+                        간편가입 완료
+                      </button>
+                    </div>
+                    {signupError && (
+                      <p className="mt-2 text-xs text-rose-300">{signupError}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm text-amber-200">
+                        📝 {guestbookUser.nickname}님의 포스트잇 작성 (한 줄 방명록 & 별점)
+                      </h3>
+
+                      {/* 1~5 Star Rating Selector */}
+                      <div className="flex items-center gap-1">
+                        <span className="mr-1 text-xs text-white/75">별점:</span>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setNewPostRating(star)}
+                            className="text-lg leading-none transition hover:scale-110 cursor-pointer"
+                          >
+                            <span
+                              className={
+                                star <= newPostRating
+                                  ? 'text-yellow-400'
+                                  : 'text-white/25'
+                              }
+                            >
+                              ★
+                            </span>
+                          </button>
+                        ))}
+                        <span className="ml-1 text-xs text-yellow-300">
+                          {newPostRating}.0점
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Post-it Color Picker */}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-white/75">포스트잇 색상:</span>
+                      {POSTIT_COLORS.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setNewPostColor(c.hex)}
+                          title={c.label}
+                          className={`h-6 w-6 rounded-sm transition cursor-pointer ${
+                            newPostColor === c.hex
+                              ? 'scale-110 ring-2 ring-white'
+                              : 'opacity-75 hover:opacity-100'
+                          }`}
+                          style={{ backgroundColor: c.hex }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* 1-Line Guestbook Input */}
+                    <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        maxLength={55}
+                        value={newPostContent}
+                        onChange={(e) =>
+                          setNewPostContent(e.target.value.replace(/\n/g, ' '))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const text = newPostContent.trim();
+                            if (text.length < 2) {
+                              setPostError('한 줄 방명록을 2글자 이상 적어주세요.');
+                              return;
+                            }
+                            onAddGuestbookPostIt(
+                              text,
+                              newPostRating,
+                              newPostColor
+                            );
+                            setNewPostContent('');
+                            setPostError(null);
+                            setIsWritingPostIt(false);
+                          }
+                        }}
+                        placeholder="독자서점에 남기고 싶은 한 줄 방명록을 적어주세요 (최대 55자)"
+                        className="flex-1 rounded-lg bg-white/12 px-3 py-2 text-xs sm:text-sm text-white placeholder-white/45 outline-none focus:bg-white/18"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const text = newPostContent.trim();
+                          if (text.length < 2) {
+                            setPostError('한 줄 방명록을 2글자 이상 적어주세요.');
+                            return;
+                          }
+                          onAddGuestbookPostIt(
+                            text,
+                            newPostRating,
+                            newPostColor
+                          );
+                          setNewPostContent('');
+                          setPostError(null);
+                          setIsWritingPostIt(false);
+                        }}
+                        className="shrink-0 rounded-lg bg-amber-400 px-4 py-2 text-xs sm:text-sm text-neutral-950 hover:bg-amber-300 transition cursor-pointer shadow-md"
+                      >
+                        책장 옆에 붙이기
+                      </button>
+                    </div>
+                    {postError && (
+                      <p className="mt-1.5 text-xs text-rose-300">{postError}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 3. Bookcase Side Panel Post-it Wall Grid (Click a Post-it to read its content!) */}
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between text-xs text-white/75">
+                <span>📌 책장 옆에 붙은 포스트잇 목록 (포스트잇을 눌러 글을 펼쳐보세요)</span>
+                <span>총 {guestbookPosts.length}장</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 rounded-xl bg-[#3b2313]/90 p-3.5 shadow-inner">
+                {guestbookPosts.map((post) => {
+                  const isSelected =
+                    (selectedPostItId ?? guestbookPosts[0]?.id) === post.id;
+                  const colorMeta =
+                    POSTIT_COLORS.find((c) => c.hex === post.color) ??
+                    POSTIT_COLORS[0];
+
+                  return (
+                    <button
+                      key={post.id}
+                      type="button"
+                      onClick={() => onSelectPostIt(post.id)}
+                      className={`group relative flex flex-col justify-between rounded-sm p-3 text-left shadow-md transition cursor-pointer ${
+                        isSelected
+                          ? 'ring-2 ring-white scale-[1.02]'
+                          : ' hover:scale-[1.02] opacity-90 hover:opacity-100'
+                      }`}
+                      style={{
+                        backgroundColor: post.color,
+                        color: colorMeta.textHex,
+                        transform: `rotate(${post.tilt * 12}deg)`,
+                      }}
+                    >
+                      <div className="absolute inset-x-0 top-0 h-2 bg-black/6" />
+                      <div className="mt-0.5 flex items-center justify-between text-[11px] opacity-85">
+                        <span className="truncate">{post.authorName}</span>
+                        <span className="text-amber-700">
+                          {'★'.repeat(post.rating)}
+                        </span>
+                      </div>
+
+                      {isSelected ? (
+                        <p className="mt-2 text-xs leading-snug break-keep">
+                          “{post.content}”
+                        </p>
+                      ) : (
+                        <div className="mt-2 flex items-center justify-between rounded bg-black/8 px-2 py-1.5 text-[11px] opacity-80 group-hover:bg-black/12">
+                          <span>🔒 포스트잇 눌러서 글 보기</span>
+                        </div>
+                      )}
+
+                      <div className="mt-2 flex items-center justify-between text-[10px] opacity-65">
+                        <span>{post.createdAt}</span>
+                        <span>{isSelected ? '열람 중' : '클릭'}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       )}

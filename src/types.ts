@@ -110,6 +110,25 @@ export interface WaypointNode {
   zone: string;
 }
 
+export interface GuestbookPostIt {
+  id: string;
+  authorName: string;
+  provider: 'pin' | 'kakao' | 'naver' | 'google';
+  rating: number; // 1 ~ 5 stars
+  content: string; // 1-line guestbook message
+  color: string; // Post-it hex color
+  createdAt: string;
+  tilt: number; // Subtle rotation in radians
+}
+
+export interface GuestbookUser {
+  id: string;
+  nickname: string;
+  provider: 'pin' | 'kakao' | 'naver' | 'google';
+  pin?: string;
+  joinedAt: string;
+}
+
 export type ActivePromptType =
   | {
       kind: 'book';

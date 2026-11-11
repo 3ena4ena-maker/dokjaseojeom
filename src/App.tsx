@@ -3,6 +3,9 @@ import { Canvas } from '@react-three/fiber';
 import {
   CHARACTER_START_POSITION,
   CHARACTER_START_ROTATION_Y,
+  GUESTBOOK_APPROACH_POINT,
+  GUESTBOOK_FACING_Y,
+  INITIAL_GUESTBOOK_POSTS,
   SEAT_OBJECTS,
   STAMP_MISSIONS,
   StampMissionData,
@@ -12,6 +15,8 @@ import {
   BookItem,
   CharacterActionState,
   GenreShelfData,
+  GuestbookPostIt,
+  GuestbookUser,
   SeatObjectData,
   SpaceStoryData,
   TableObjectData,
@@ -86,6 +91,31 @@ export function App() {
     }
   });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Post-it Guestbook & Simple Sign-Up (`중간 책장 옆 포스트잇 방명록 & 간편가입`)
+  const [guestbookPosts, setGuestbookPosts] = useState<GuestbookPostIt[]>(
+    () => {
+      try {
+        const saved = localStorage.getItem('dokja_guestbook_posts_v1');
+        return saved ? JSON.parse(saved) : INITIAL_GUESTBOOK_POSTS;
+      } catch {
+        return INITIAL_GUESTBOOK_POSTS;
+      }
+    }
+  );
+  const [guestbookUser, setGuestbookUser] = useState<GuestbookUser | null>(
+    () => {
+      try {
+        const saved = localStorage.getItem('dokja_guestbook_user_v1');
+        return saved ? JSON.parse(saved) : null;
+      } catch {
+        return null;
+      }
+    }
+  );
+  const [selectedPostItId, setSelectedPostItId] = useState<string | null>(null);
+  const [isGuestbookModalOpen, setIsGuestbookModalOpen] =
+    useState<boolean>(false);
 
   // Bookshop Owner (`책방지기`): appears on a 5-minute (300s) cycle, staying seated for ~30 seconds
   const ownerCycleAnchorRef = useRef<number | null>(null);
@@ -698,6 +728,154 @@ export function App() {
     setSelectedOwnerQuestionIdx(null);
   }, []);
 
+  // Click a Post-it on the side of the middle divider bookcase -> walk there, reach out, and open that Post-it note
+  const handleSelectPostIt = useCallback(
+    (postId: string) => {
+      if (actionState === 'INTERACTING') return;
+      setBrowsingShelf(null);
+      setInspectingBook(null);
+      setInspectingTable(null);
+      setInspectingStory(null);
+      setIsOwnerTalkOpen(false);
+      setSelectedPostItId(postId);
+
+      // If already open inside the guestbook modal, just switch the viewed Post-it immediately
+      if (isGuestbookModalOpen) {
+        return;
+      }
+
+      walkToAndExecute(
+        GUESTBOOK_APPROACH_POINT[0],
+        GUESTBOOK_APPROACH_POINT[2],
+        () => {
+          rotationYRef.current = GUESTBOOK_FACING_Y;
+          cameraPitchRef.current = 0.02;
+          triggerFirstPersonArmReach(null, () => {
+            setIsGuestbookModalOpen(true);
+          });
+        }
+      );
+    },
+    [
+      actionState,
+      isGuestbookModalOpen,
+      walkToAndExecute,
+      triggerFirstPersonArmReach,
+    ]
+  );
+
+  // Walk right in front of the middle bookcase side Post-it wall
+  const handleWalkToGuestbookWall = useCallback(() => {
+    if (actionState === 'INTERACTING') return;
+    setBrowsingShelf(null);
+    setInspectingBook(null);
+    setInspectingTable(null);
+    setInspectingStory(null);
+    setIsOwnerTalkOpen(false);
+    showToast('📌 중간 책장 옆 포스트잇 방명록 앞으로 이동합니다.');
+    walkToAndExecute(
+      GUESTBOOK_APPROACH_POINT[0],
+      GUESTBOOK_APPROACH_POINT[2],
+      () => {
+        rotationYRef.current = GUESTBOOK_FACING_Y;
+        cameraPitchRef.current = 0.02;
+        setActionState('IDLE');
+        showToast('📌 책장 옆에 붙은 포스트잇을 눌러 방명록 글을 확인해 보세요!');
+      }
+    );
+  }, [actionState, walkToAndExecute, showToast]);
+
+  const handleSignUpGuestbookUser = useCallback(
+    (
+      nickname: string,
+      provider: 'pin' | 'kakao' | 'naver' | 'google',
+      pin?: string
+    ) => {
+      const now = new Date();
+      const joinedAt = `${now.getFullYear()}.${String(
+        now.getMonth() + 1
+      ).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+      const newUser: GuestbookUser = {
+        id: `user_${Date.now()}`,
+        nickname,
+        provider,
+        pin,
+        joinedAt,
+      };
+      setGuestbookUser(newUser);
+      try {
+        localStorage.setItem('dokja_guestbook_user_v1', JSON.stringify(newUser));
+      } catch {
+        // ignore storage errors
+      }
+      showToast(`✨ '${nickname}'님 간편가입이 완료되었습니다!`);
+    },
+    [showToast]
+  );
+
+  const handleLogoutGuestbookUser = useCallback(() => {
+    setGuestbookUser(null);
+    try {
+      localStorage.removeItem('dokja_guestbook_user_v1');
+    } catch {
+      // ignore
+    }
+    showToast('🔒 방명록 계정에서 로그아웃되었습니다.');
+  }, [showToast]);
+
+  const handleAddGuestbookPostIt = useCallback(
+    (content: string, rating: number, color: string) => {
+      if (!guestbookUser) return;
+      const now = new Date();
+      const createdAt = `${now.getFullYear()}.${String(
+        now.getMonth() + 1
+      ).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+      const tilts = [-0.06, 0.05, -0.04, 0.06, -0.05, 0.04];
+      const newPost: GuestbookPostIt = {
+        id: `postit_${Date.now()}`,
+        authorName: guestbookUser.nickname,
+        provider: guestbookUser.provider,
+        rating,
+        content,
+        color,
+        createdAt,
+        tilt: tilts[guestbookPosts.length % tilts.length],
+      };
+      setGuestbookPosts((prev) => {
+        const next = [newPost, ...prev];
+        try {
+          localStorage.setItem('dokja_guestbook_posts_v1', JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+      setSelectedPostItId(newPost.id);
+      bookstoreBgm.playStampCollectedChime();
+      showToast('📌 중간 책장 옆에 새 포스트잇 방명록을 붙였습니다!');
+    },
+    [guestbookUser, guestbookPosts.length, showToast]
+  );
+
+  const handleDeleteGuestbookPostIt = useCallback(
+    (postId: string) => {
+      setGuestbookPosts((prev) => {
+        const next = prev.filter((p) => p.id !== postId);
+        try {
+          localStorage.setItem('dokja_guestbook_posts_v1', JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        if (selectedPostItId === postId) {
+          setSelectedPostItId(next[0]?.id ?? null);
+        }
+        return next;
+      });
+      showToast('🗑️ 내 포스트잇을 떼어냈습니다.');
+    },
+    [selectedPostItId, showToast]
+  );
+
   // Walk directly to a signature stamp mission spot from the Stamp Tour card
   const handleWalkToStampMission = useCallback(
     (mission: StampMissionData) => {
@@ -904,6 +1082,8 @@ export function App() {
           isOwnerTalking={isOwnerTalkOpen}
           selectedOwnerQuestionIdx={selectedOwnerQuestionIdx}
           onOpenOwnerTalk={handleOpenOwnerTalk}
+          guestbookPosts={guestbookPosts}
+          onSelectPostIt={handleSelectPostIt}
         />
       </Canvas>
 
@@ -961,6 +1141,17 @@ export function App() {
         selectedOwnerQuestionIdx={selectedOwnerQuestionIdx}
         onSelectOwnerQuestion={setSelectedOwnerQuestionIdx}
         onCloseOwnerTalk={handleCloseOwnerTalk}
+        guestbookPosts={guestbookPosts}
+        selectedPostItId={selectedPostItId}
+        isGuestbookModalOpen={isGuestbookModalOpen}
+        guestbookUser={guestbookUser}
+        onSelectPostIt={handleSelectPostIt}
+        onCloseGuestbookModal={() => setIsGuestbookModalOpen(false)}
+        onWalkToGuestbookWall={handleWalkToGuestbookWall}
+        onSignUpGuestbookUser={handleSignUpGuestbookUser}
+        onLogoutGuestbookUser={handleLogoutGuestbookUser}
+        onAddGuestbookPostIt={handleAddGuestbookPostIt}
+        onDeleteGuestbookPostIt={handleDeleteGuestbookPostIt}
       />
     </div>
   );

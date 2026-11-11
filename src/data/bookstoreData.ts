@@ -1,6 +1,7 @@
 import {
   BookItem,
   GenreShelfData,
+  GuestbookPostIt,
   ObstacleBox,
   SeatObjectData,
   SpaceStoryData,
@@ -768,5 +769,81 @@ export const STAMP_MISSIONS: StampMissionData[] = [
     triggerRadius: 0,
     linkedIds: [],
     photoUrl: '/photos/duck_and_divider.jpg',
+  },
+];
+
+// Post-it Guestbook on the side panel of the middle divider bookcase (`중간에 서있는 책장 옆 포스트잇 방명록`)
+export const GUESTBOOK_APPROACH_POINT: [number, number, number] = [-0.55, 0, -0.05];
+export const GUESTBOOK_FACING_Y = -Math.PI / 2; // Facing West (-X) directly at the divider bookcase side panel
+
+export const POSTIT_COLORS = [
+  { id: 'yellow', label: '버터 옐로우', hex: '#fef08a', textHex: '#422006' },
+  { id: 'pink', label: '코랄 핑크', hex: '#fbcfe8', textHex: '#500724' },
+  { id: 'mint', label: '세이지 민트', hex: '#a7f3d0', textHex: '#064e3b' },
+  { id: 'sky', label: '스카이 블루', hex: '#bae6fd', textHex: '#0c4a6e' },
+  { id: 'peach', label: '살구 피치', hex: '#fed7aa', textHex: '#431407' },
+  { id: 'lavender', label: '라벤더', hex: '#e9d5ff', textHex: '#3b0764' },
+] as const;
+
+export const INITIAL_GUESTBOOK_POSTS: GuestbookPostIt[] = [
+  {
+    id: 'postit_1',
+    authorName: '성수동책벌레',
+    provider: 'kakao',
+    rating: 5,
+    content: '오렌지빛 천장과 샹들리에 아래서 고른 책 한 권, 공간이 참 따뜻해요!',
+    color: '#fef08a',
+    createdAt: '2026.11.08',
+    tilt: -0.06,
+  },
+  {
+    id: 'postit_2',
+    authorName: '가죽향기',
+    provider: 'pin',
+    rating: 5,
+    content: '독립서점과 딤프치 가죽공방이 함께 있어서 구경하는 재미가 최고예요.',
+    color: '#fbcfe8',
+    createdAt: '2026.11.09',
+    tilt: 0.05,
+  },
+  {
+    id: 'postit_3',
+    authorName: '도쿄산책자',
+    provider: 'naver',
+    rating: 5,
+    content: '책방지기님의 사진집 『동경전』 표지부터 여운이 깊게 남습니다.',
+    color: '#a7f3d0',
+    createdAt: '2026.11.10',
+    tilt: 0.04,
+  },
+  {
+    id: 'postit_4',
+    authorName: '무무팬클럽',
+    provider: 'kakao',
+    rating: 5,
+    content: '칸막이 책장 아래 숨어있는 까만 강아지 무무 찾았어요! 너무 귀여워요 🐶',
+    color: '#bae6fd',
+    createdAt: '2026.11.10',
+    tilt: -0.05,
+  },
+  {
+    id: 'postit_5',
+    authorName: '창가독서왕',
+    provider: 'google',
+    rating: 5,
+    content: '창가 주황 스탠드 켜두고 노을 지는 풍경 보며 책 읽는 시간 행복했어요.',
+    color: '#fed7aa',
+    createdAt: '2026.11.11',
+    tilt: 0.07,
+  },
+  {
+    id: 'postit_6',
+    authorName: '오리마스코트',
+    provider: 'pin',
+    rating: 5,
+    content: '숨은그림찾기 5개 다 모았어요! 다음에 실제 서점에도 꼭 방문할게요.',
+    color: '#e9d5ff',
+    createdAt: '2026.11.11',
+    tilt: -0.04,
   },
 ];

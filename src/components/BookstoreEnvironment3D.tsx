@@ -13,6 +13,7 @@ import {
 import {
   BookItem,
   GenreShelfData,
+  GuestbookPostIt,
   SeatObjectData,
   SpaceStoryData,
   TableObjectData,
@@ -47,6 +48,8 @@ interface BookstoreEnvironment3DProps {
   isOwnerTalking: boolean;
   selectedOwnerQuestionIdx: number | null;
   onOpenOwnerTalk: () => void;
+  guestbookPosts: GuestbookPostIt[];
+  onSelectPostIt: (postId: string) => void;
 }
 
 interface DecorativeBookSpine {
@@ -78,6 +81,8 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
   isOwnerTalking,
   selectedOwnerQuestionIdx,
   onOpenOwnerTalk,
+  guestbookPosts,
+  onSelectPostIt,
 }) => {
   const [hoveredBookId, setHoveredBookId] = useState<string | null>(null);
   const [hoveredSeatId, setHoveredSeatId] = useState<string | null>(null);
@@ -85,6 +90,7 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
   const [hoveredStoryId, setHoveredStoryId] = useState<string | null>(null);
   const [hoveredWaypointId, setHoveredWaypointId] = useState<string | null>(null);
   const [hoveredHiddenId, setHoveredHiddenId] = useState<string | null>(null);
+  const [hoveredPostItId, setHoveredPostItId] = useState<string | null>(null);
   const [ownerLibraryNoticeOpen, setOwnerLibraryNoticeOpen] =
     useState<boolean>(false);
   const [hoveredOwnerLibrary, setHoveredOwnerLibrary] =
@@ -2449,6 +2455,160 @@ export const BookstoreEnvironment3D: React.FC<BookstoreEnvironment3DProps> = ({
             <meshStandardMaterial color="#4a2c16" roughness={0.75} />
           </mesh>
         ))}
+
+        {/* ============================================================
+            POST-IT GUESTBOOK WALL ON THE SIDE OF THE MIDDLE DIVIDER BOOKCASE
+            (`중간에 서있는 책장 옆 포스트잇 방명록`, X = -1.68, facing +X into the central aisle)
+           ============================================================ */}
+        <group position={[1.368, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+          {/* Warm Brass & Wood Header Plaque on Side Panel */}
+          <group
+            position={[0, 2.04, 0.004]}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (guestbookPosts.length > 0) {
+                onSelectPostIt(guestbookPosts[0].id);
+              }
+            }}
+            onPointerOver={(e) => {
+              e.stopPropagation();
+              setHoveredPostItId('header');
+            }}
+            onPointerOut={() => setHoveredPostItId(null)}
+          >
+            <mesh castShadow>
+              <boxGeometry args={[0.34, 0.085, 0.012]} />
+              <meshStandardMaterial color="#2b180c" roughness={0.6} />
+            </mesh>
+            <mesh position={[0, 0, 0.007]}>
+              <planeGeometry args={[0.31, 0.062]} />
+              <meshStandardMaterial
+                color="#d4af37"
+                metalness={0.65}
+                roughness={0.3}
+              />
+            </mesh>
+            {hoveredPostItId === 'header' && (
+              <Html position={[0, 0.11, 0.04]} center zIndexRange={[6, 0]}>
+                <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/55 px-2.5 py-1 text-xs text-amber-200 backdrop-blur-md shadow-sm">
+                  📝 독자 방명록 · 포스트잇을 눌러 글을 확인하세요
+                </div>
+              </Html>
+            )}
+          </group>
+
+          {/* Sticky Post-it Notes Stuck Directly onto the Bookcase Side Panel */}
+          {guestbookPosts.slice(0, 12).map((post, idx) => {
+            const col = idx % 2;
+            const row = Math.floor(idx / 2);
+            const px = (col === 0 ? -0.095 : 0.095) + ((idx * 17) % 5 - 2) * 0.006;
+            const py = 1.84 - row * 0.165 + ((idx * 13) % 5 - 2) * 0.005;
+            const isHovered = hoveredPostItId === post.id;
+
+            return (
+              <group
+                key={post.id}
+                position={[px, py, isHovered ? 0.016 : 0.005]}
+                rotation={[0.045, 0, post.tilt]}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectPostIt(post.id);
+                }}
+                onPointerOver={(e) => {
+                  e.stopPropagation();
+                  setHoveredPostItId(post.id);
+                }}
+                onPointerOut={() => setHoveredPostItId(null)}
+              >
+                {/* Generous invisible hit area so clicking a Post-it is effortless */}
+                <mesh visible={false}>
+                  <boxGeometry args={[0.165, 0.155, 0.04]} />
+                </mesh>
+
+                {/* Subtle Drop Shadow behind lifted Post-it bottom */}
+                <mesh position={[0.003, -0.004, -0.003]}>
+                  <planeGeometry args={[0.138, 0.138]} />
+                  <meshBasicMaterial
+                    color="#000000"
+                    transparent
+                    opacity={0.28}
+                  />
+                </mesh>
+
+                {/* Main Colored Post-it Paper Square */}
+                <mesh castShadow>
+                  <boxGeometry args={[0.136, 0.136, 0.004]} />
+                  <meshStandardMaterial
+                    color={post.color}
+                    emissive={isHovered ? post.color : '#000000'}
+                    emissiveIntensity={isHovered ? 0.35 : 0}
+                    roughness={0.78}
+                  />
+                </mesh>
+
+                {/* Top Adhesive Strip Accent */}
+                <mesh position={[0, 0.054, 0.0025]}>
+                  <planeGeometry args={[0.136, 0.024]} />
+                  <meshBasicMaterial
+                    color="#000000"
+                    transparent
+                    opacity={0.07}
+                  />
+                </mesh>
+
+                {/* Miniature Gold Stars (★ 1~5) on Top of Post-it */}
+                {Array.from({ length: post.rating }).map((_, sIdx) => (
+                  <mesh
+                    key={sIdx}
+                    position={[-0.044 + sIdx * 0.022, 0.032, 0.003]}
+                  >
+                    <circleGeometry args={[0.0065, 6]} />
+                    <meshBasicMaterial color="#d97706" />
+                  </mesh>
+                ))}
+
+                {/* Miniature Handwriting Ink Lines (Message is only readable when you click the Post-it!) */}
+                <mesh position={[-0.006, 0.002, 0.003]}>
+                  <planeGeometry args={[0.098, 0.005]} />
+                  <meshBasicMaterial
+                    color="#1e293b"
+                    transparent
+                    opacity={0.42}
+                  />
+                </mesh>
+                <mesh position={[-0.016, -0.018, 0.003]}>
+                  <planeGeometry args={[0.076, 0.005]} />
+                  <meshBasicMaterial
+                    color="#1e293b"
+                    transparent
+                    opacity={0.35}
+                  />
+                </mesh>
+                <mesh position={[0.025, -0.042, 0.003]}>
+                  <planeGeometry args={[0.042, 0.004]} />
+                  <meshBasicMaterial
+                    color="#475569"
+                    transparent
+                    opacity={0.45}
+                  />
+                </mesh>
+
+                {/* Hover Tooltip: Prompts user to click the Post-it to view its guestbook message */}
+                {isHovered && (
+                  <Html position={[0, 0.11, 0.04]} center zIndexRange={[6, 0]}>
+                    <div className="pointer-events-none whitespace-nowrap rounded-[4px] bg-black/60 px-2.5 py-1 text-xs text-white/95 backdrop-blur-md shadow-md">
+                      📝 <span className="text-amber-300">{post.authorName}</span>님의 포스트잇 ·{' '}
+                      <span className="text-yellow-400">
+                        {'★'.repeat(post.rating)}
+                      </span>{' '}
+                      <span className="text-white/75">(눌러서 글 보기)</span>
+                    </div>
+                  </Html>
+                )}
+              </group>
+            );
+          })}
+        </group>
         {/* Top Shelf Prop: Vintage Black PFAFF 130 Sewing Machine */}
         <group position={[0.65, 2.55, 0]}>
           <mesh position={[0, 0.03, 0]}>
